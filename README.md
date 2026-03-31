@@ -1,7 +1,9 @@
 # Hermes Web UI
 
-A lightweight, dark-themed browser interface for Hermes.
-Full parity with the CLI experience -- everything you can do from a terminal,
+[Hermes Agent](https://hermes-agent.nousresearch.com/) is a sophisticated autonomous agent that lives on your server, accessed via a terminal or messaging apps, remembers what it learns, and gets more capable the longer it runs.
+
+Hermes WebUI is a lightweight, dark-themed web app interface in your browser for [Hermes Agent](https://hermes-agent.nousresearch.com/).
+Full parity with the CLI experience - everything you can do from a terminal,
 you can do from this UI. No build step, no framework, no bundler. Just Python
 and vanilla JS.
 
@@ -15,6 +17,8 @@ This gives you nearly **1:1 parity with Hermes CLI from a convenient web UI** wh
 ---
 
 ## Quick start
+
+First, you need to install and configure [Hermes Agent](https://hermes-agent.nousresearch.com/). Once installed:
 
 ```bash
 git clone https://github.com/nesquena/hermes-webui.git hermes-webui
