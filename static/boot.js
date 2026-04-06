@@ -306,10 +306,23 @@ document.querySelectorAll('.suggestion').forEach(btn=>{
   };
 })();
 
+function applyBotName(){
+  const name=window._botName||'Hermes';
+  document.title=name;
+  const sidebarH1=document.querySelector('.sidebar-header h1');
+  if(sidebarH1) sidebarH1.textContent=name;
+  const logo=document.querySelector('.sidebar-header .logo');
+  if(logo) logo.textContent=name.charAt(0).toUpperCase();
+  const topbarTitle=$('topbarTitle');
+  if(topbarTitle && (!S.session)) topbarTitle.textContent=name;
+  const msg=$('msg');
+  if(msg) msg.placeholder='Message '+name+'\u2026';
+}
+
 (async()=>{
   // Load send key preference
   let _bootSettings={};
-  try{const s=await api('/api/settings');_bootSettings=s;window._sendKey=s.send_key||'enter';window._showTokenUsage=!!s.show_token_usage;window._showCliSessions=!!s.show_cli_sessions;const _theme=s.theme||'dark';document.documentElement.dataset.theme=_theme;localStorage.setItem('hermes-theme',_theme);}catch(e){window._sendKey='enter';window._showTokenUsage=false;window._showCliSessions=false;_bootSettings={check_for_updates:false};}
+  try{const s=await api('/api/settings');_bootSettings=s;window._sendKey=s.send_key||'enter';window._showTokenUsage=!!s.show_token_usage;window._showCliSessions=!!s.show_cli_sessions;window._botName=s.bot_name||'Hermes';const _theme=s.theme||'dark';document.documentElement.dataset.theme=_theme;localStorage.setItem('hermes-theme',_theme);applyBotName();}catch(e){window._sendKey='enter';window._showTokenUsage=false;window._showCliSessions=false;window._botName='Hermes';_bootSettings={check_for_updates:false};}
   // Non-blocking update check (fire-and-forget, once per tab session)
   // ?test_updates=1 in URL forces banner display for testing (bypasses sessionStorage guards)
   const _testUpdates=new URLSearchParams(location.search).get('test_updates')==='1';

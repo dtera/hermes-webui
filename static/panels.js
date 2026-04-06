@@ -1009,6 +1009,9 @@ async function loadSettingsPanel(){
     if(syncCb){syncCb.checked=!!settings.sync_to_insights;syncCb.addEventListener('change',_markSettingsDirty,{once:false});}
     const updateCb=$('settingsCheckUpdates');
     if(updateCb){updateCb.checked=settings.check_for_updates!==false;updateCb.addEventListener('change',_markSettingsDirty,{once:false});}
+    // Bot name
+    const botNameField=$('settingsBotName');
+    if(botNameField){botNameField.value=settings.bot_name||'Hermes';botNameField.addEventListener('input',_markSettingsDirty,{once:false});}
     // Password field: always blank (we don't send hash back)
     const pwField=$('settingsPassword');
     if(pwField){pwField.value='';pwField.addEventListener('input',_markSettingsDirty,{once:false});}
@@ -1042,6 +1045,8 @@ async function saveSettings(andClose){
   body.show_cli_sessions=showCliSessions;
   body.sync_to_insights=!!($('settingsSyncInsights')||{}).checked;
   body.check_for_updates=!!($('settingsCheckUpdates')||{}).checked;
+  const botName=(($('settingsBotName')||{}).value||'').trim();
+  body.bot_name=botName||'Hermes';
   // Password: only act if the field has content; blank = leave auth unchanged
   if(pw && pw.trim()){
     try{
@@ -1060,6 +1065,8 @@ async function saveSettings(andClose){
     window._sendKey=sendKey||'enter';
     window._showTokenUsage=showTokenUsage;
     window._showCliSessions=showCliSessions;
+    window._botName=body.bot_name;
+    if(typeof applyBotName==='function') applyBotName();
     _settingsDirty=false; _settingsThemeOnOpen=theme;
     const bar=$('settingsUnsavedBar'); if(bar) bar.style.display='none';
     renderMessages();

@@ -93,8 +93,9 @@ async function send(){
     assistantRow=document.createElement('div');assistantRow.className='msg-row';
     assistantBody=document.createElement('div');assistantBody.className='msg-body';
     const role=document.createElement('div');role.className='msg-role assistant';
-    const icon=document.createElement('div');icon.className='role-icon assistant';icon.textContent='H';
-    const lbl=document.createElement('span');lbl.style.fontSize='12px';lbl.textContent='Hermes';
+    const _bn=window._botName||'Hermes';
+    const icon=document.createElement('div');icon.className='role-icon assistant';icon.textContent=_bn.charAt(0).toUpperCase();
+    const lbl=document.createElement('span');lbl.style.fontSize='12px';lbl.textContent=_bn;
     role.appendChild(icon);role.appendChild(lbl);
     assistantRow.appendChild(role);assistantRow.appendChild(assistantBody);
     $('msgInner').appendChild(assistantRow);

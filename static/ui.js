@@ -237,7 +237,7 @@ function setStatus(t){
     txt.textContent=t;
     bar.style.display='';
     // Show dismiss X only for static/error messages, not transient busy ones
-    const transient = t.endsWith('…') || t === 'Hermes is thinking…';
+    const transient = t.endsWith('…') || t === (window._botName||'Hermes')+' is thinking\u2026';
     if(dismiss)dismiss.style.display=(!transient && !S.busy)?'inline':'none';
   }
 }
@@ -402,7 +402,7 @@ async function checkInflightOnBoot(sid) {
 
 function syncTopbar(){
   if(!S.session){
-    document.title='Hermes';
+    document.title=window._botName||'Hermes';
     // Show default workspace name even without a session
     const sidebarName=$('sidebarWsName');
     if(sidebarName && sidebarName.textContent==='Workspace'){
@@ -412,7 +412,7 @@ function syncTopbar(){
   }
   const sessionTitle=S.session.title||'Untitled';
   $('topbarTitle').textContent=sessionTitle;
-  document.title=sessionTitle+' \u2014 Hermes';
+  document.title=sessionTitle+' \u2014 '+(window._botName||'Hermes');
   const vis=S.messages.filter(m=>m&&m.role&&m.role!=='tool');
   $('topbarMeta').textContent=`${vis.length} messages`;
   // If a profile switch just happened, apply its model rather than the session's stale value.
@@ -505,7 +505,8 @@ function renderMessages(){
     const retryBtn = isLastAssistant ? `<button class="msg-action-btn" title="Regenerate response" onclick="regenerateResponse(this)">&#8635;</button>` : '';
     const tsVal=m._ts||m.timestamp;
     const tsTitle=tsVal?new Date(tsVal*1000).toLocaleString():'';
-    row.innerHTML=`<div class="msg-role ${m.role}" ${tsTitle?`title="${esc(tsTitle)}"`:''}><div class="role-icon ${m.role}">${isUser?'Y':'H'}</div><span style="font-size:12px">${isUser?'You':'Hermes'}</span>${tsTitle?`<span class="msg-time">${new Date(tsVal*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`:''}<span class="msg-actions">${editBtn}<button class="msg-copy-btn msg-action-btn" title="Copy" onclick="copyMsg(this)">&#128203;</button>${retryBtn}</span></div>${filesHtml}<div class="msg-body">${bodyHtml}</div>`;
+    const _bn=window._botName||'Hermes';
+    row.innerHTML=`<div class="msg-role ${m.role}" ${tsTitle?`title="${esc(tsTitle)}"`:''}><div class="role-icon ${m.role}">${isUser?'Y':esc(_bn.charAt(0).toUpperCase())}</div><span style="font-size:12px">${isUser?'You':esc(_bn)}</span>${tsTitle?`<span class="msg-time">${new Date(tsVal*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`:''}<span class="msg-actions">${editBtn}<button class="msg-copy-btn msg-action-btn" title="Copy" onclick="copyMsg(this)">&#128203;</button>${retryBtn}</span></div>${filesHtml}<div class="msg-body">${bodyHtml}</div>`;
     row.dataset.rawText = String(content).trim();
     inner.appendChild(row);
   }

@@ -680,6 +680,7 @@ _SETTINGS_DEFAULTS = {
     'sync_to_insights': False,  # mirror WebUI token usage to state.db for /insights
     'check_for_updates': True,  # check if webui/agent repos are behind upstream
     'theme': 'dark',  # active UI theme name (no enum gate -- allows custom themes)
+    'bot_name': os.getenv('HERMES_WEBUI_BOT_NAME', 'Hermes'),  # display name for the assistant
     'password_hash': None,  # SHA-256 hash; None = auth disabled
 }
 

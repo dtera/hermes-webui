@@ -2,6 +2,7 @@
 Hermes Web UI -- Route handlers for GET and POST endpoints.
 Extracted from server.py (Sprint 11) so server.py is a thin shell.
 """
+import html as _html
 import json
 import os
 import queue
@@ -56,7 +57,7 @@ except ImportError:
 # ── Login page (self-contained, no external deps) ────────────────────────────
 _LOGIN_PAGE_HTML = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hermes — Sign in</title>
+<title>{{BOT_NAME}} — Sign in</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a1a2e;color:#e8e8f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -79,8 +80,8 @@ button:hover{background:rgba(124,185,255,.25)}
 .err{color:#e94560;font-size:12px;margin-top:10px;display:none}
 </style></head><body>
 <div class="card">
-  <div class="logo">H</div>
-  <h1>Hermes</h1>
+  <div class="logo">{{BOT_NAME_INITIAL}}</div>
+  <h1>{{BOT_NAME}}</h1>
   <p class="sub">Enter your password to continue</p>
   <form onsubmit="doLogin(event);return false">
     <input type="password" id="pw" placeholder="Password" autofocus
@@ -116,7 +117,9 @@ def handle_get(handler, parsed) -> bool:
                  content_type='text/html; charset=utf-8')
 
     if parsed.path == '/login':
-        return t(handler, _LOGIN_PAGE_HTML, content_type='text/html; charset=utf-8')
+        _bn = _html.escape(load_settings().get('bot_name') or 'Hermes')
+        _page = _LOGIN_PAGE_HTML.replace('{{BOT_NAME}}', _bn).replace('{{BOT_NAME_INITIAL}}', _bn[0].upper())
+        return t(handler, _page, content_type='text/html; charset=utf-8')
 
     if parsed.path == '/api/auth/status':
         from api.auth import is_auth_enabled, parse_cookie, verify_session
@@ -523,6 +526,8 @@ def handle_post(handler, parsed) -> bool:
 
     # ── Settings (POST) ──
     if parsed.path == '/api/settings':
+        if 'bot_name' in body:
+            body['bot_name'] = (str(body['bot_name']) or '').strip() or 'Hermes'
         saved = save_settings(body)
         saved.pop('password_hash', None)  # never expose hash to client
         return j(handler, saved)
