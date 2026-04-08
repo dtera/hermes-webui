@@ -346,6 +346,10 @@
         </select>
       </div>
       <div class="settings-field">
+        <label for="settingsLanguage">Language</label>
+        <select id="settingsLanguage" style="width:100%;padding:8px;background:var(--code-bg);color:var(--text);border:1px solid var(--border2);border-radius:6px"></select>
+      </div>
+      <div class="settings-field">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="settingsSoundEnabled" style="width:15px;height:15px;accent-color:var(--accent)">
           Notification sound
@@ -427,6 +431,7 @@
   </button>
 </nav>
 <div class="toast" id="toast"></div>
+<script src="/static/i18n.js"></script>
 <script src="/static/ui.js"></script>
 <script src="/static/workspace.js"></script>
 <script src="/static/sessions.js"></script>
