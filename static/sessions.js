@@ -961,11 +961,13 @@ async function deleteSession(sid){
     if(remaining.sessions&&remaining.sessions.length){
       await loadSession(remaining.sessions[0].session_id);
     }else{
-      $('topbarTitle').textContent=window._botName||'Hermes';
-      $('topbarMeta').textContent='Start a new conversation';
+      const _tt=$('topbarTitle');if(_tt)_tt.textContent=window._botName||'Hermes';
+      const _tm=$('topbarMeta');if(_tm)_tm.textContent='Start a new conversation';
       $('msgInner').innerHTML='';
       $('emptyState').style.display='';
       $('fileTree').innerHTML='';
+      if(typeof S!=='undefined') S.session=null;
+      if(typeof syncAppTitlebar==='function') syncAppTitlebar();
     }
   }
   showToast('Conversation deleted');

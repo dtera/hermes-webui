@@ -966,7 +966,7 @@ function updateQueueBadge(sessionId){
     badge.remove();
   }
 }
-function showToast(msg,ms){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),ms||2800);}
+function showToast(msg,ms,type){const el=$('toast');if(!el)return;const s=String(msg==null?'':msg);let t=type;if(!t){const low=s.toLowerCase();if(/fail|error|denied|invalid|unavailable|no active|no workspace match|no model match|no personalities/.test(low))t='error';else if(/warn|queued|takes effect|skipped|fallback/.test(low))t='warning';else if(/saved|created|imported|restored|switched|set to|updated|duplicated|moved to|renamed|deleted|complete|pinned|archived|cleared|stopped/.test(low))t='success';else t='info';}el.textContent=s;el.className='toast show '+t;clearTimeout(el._t);el._t=setTimeout(()=>{el.classList.remove('show');},ms||2800);}
 
 // ── Shared app dialogs ───────────────────────────────────────────────────────
 // showConfirmDialog(opts) and showPromptDialog(opts) replace browser-native dialog calls
@@ -1384,13 +1384,15 @@ function syncTopbar(){
         sidebarName.textContent=t('no_workspace');
       }
     }
+    if(typeof syncAppTitlebar==='function') syncAppTitlebar();
     return;
   }
   const sessionTitle=S.session.title||t('untitled');
-  $('topbarTitle').textContent=sessionTitle;
+  const _topbarTitle=$('topbarTitle');if(_topbarTitle)_topbarTitle.textContent=sessionTitle;
   document.title=sessionTitle+' \u2014 '+(window._botName||'Hermes');
   const vis=S.messages.filter(m=>m&&m.role&&m.role!=='tool');
-  $('topbarMeta').textContent=t('n_messages',vis.length);
+  const _topbarMeta=$('topbarMeta');if(_topbarMeta)_topbarMeta.textContent=t('n_messages',vis.length);
+  if(typeof syncAppTitlebar==='function') syncAppTitlebar();
   // If a profile switch just happened, apply its model rather than the session's stale value.
   // S._pendingProfileModel is set by switchToProfile() and cleared here after one application.
   const modelOverride=S._pendingProfileModel;
@@ -1786,7 +1788,7 @@ function renderMessages(){
     const bodyHtml = isUser ? esc(String(content)).replace(/\n/g,'<br>') : renderMd(_stripXmlToolCallsDisplay(String(content)));
     const isEditableUser=isUser&&rawIdx===lastUserRawIdx;
     const editBtn  = isEditableUser ? `<button class="msg-action-btn" title="${t('edit_message')}" onclick="editMessage(this)">${li('pencil',13)}</button>` : '';
-    const undoBtn  = isLastAssistant ? `<button class="msg-action-btn" title="${t('undo_exchange')}" onclick="undoLastExchange()">${li('undo-2',13)}</button>` : '';
+    const undoBtn  = isLastAssistant ? `<button class="msg-action-btn" title="${t('undo_exchange')}" onclick="undoLastExchange()">${li('undo',13)}</button>` : '';
     const retryBtn = isLastAssistant ? `<button class="msg-action-btn" title="${t('regenerate')}" onclick="regenerateResponse(this)">${li('rotate-ccw',13)}</button>` : '';
     const copyBtn  = `<button class="msg-copy-btn msg-action-btn" title="${t('copy')}" onclick="copyMsg(this)">${li('copy',13)}</button>`;
     const tsVal=m._ts||m.timestamp;
