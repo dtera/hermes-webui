@@ -192,16 +192,34 @@ window._configuredModelBadges=window._configuredModelBadges||{};
 // ── Smart model resolver ────────────────────────────────────────────────────
 // Finds the best matching option value in a <select> for a given model ID.
 // Handles mismatches like 'claude-sonnet-4-6' vs 'anthropic/claude-sonnet-4.6'.
-// Returns the matched option's value (already in the list), or null if no match.
-function _findModelInDropdown(modelId, sel){
+// When a preferred provider is supplied, duplicate normalized IDs prefer that
+// provider's option so Settings/profile rehydration doesn't snap back to the
+// first colliding entry.
+function _getOptionProviderId(opt){
+  if(!opt) return '';
+  const group=opt.parentElement;
+  if(group && group.tagName==='OPTGROUP' && group.dataset && group.dataset.provider){
+    return group.dataset.provider;
+  }
+  const value=String(opt.value||'');
+  if(value.startsWith('@') && value.includes(':')) return value.slice(1,value.indexOf(':'));
+  return '';
+}
+function _findModelInDropdown(modelId, sel, preferredProviderId){
   if(!modelId||!sel) return null;
-  const opts=Array.from(sel.options).map(o=>o.value);
-  // 1. Exact match
-  if(opts.includes(modelId)) return modelId;
-  // 2. Normalize: lowercase, strip namespace prefix, replace hyphens→dots
-  // Also strip @provider: prefix from deduplicated model IDs (#1228).
+  const options=Array.from(sel.options);
+  const opts=options.map(o=>o.value);
+  // 1. Normalize: lowercase, strip namespace prefix, replace hyphens→dots.
+  // Also strip @provider: prefix from deduplicated model IDs (#1228, #1313).
   const norm=s=>s.toLowerCase().replace(/^[^/]+\//,'').replace(/^@([^:]+:)+/,'').replace(/-/g,'.');
   const target=norm(modelId);
+  const preferred=String(preferredProviderId||'').toLowerCase();
+  if(preferred){
+    const providerMatch=options.find(o=>norm(o.value)===target && _getOptionProviderId(o).toLowerCase()===preferred);
+    if(providerMatch) return providerMatch.value;
+  }
+  // 2. Exact match
+  if(opts.includes(modelId)) return modelId;
   const exact=opts.find(o=>norm(o)===target);
   if(exact) return exact;
   // 3. Prefix/substring: require the candidate to start with the FULL normalized target
@@ -217,9 +235,9 @@ function _findModelInDropdown(modelId, sel){
 
 // Set the model picker to the best match for modelId.
 // Returns the resolved value that was actually set, or null if nothing matched.
-function _applyModelToDropdown(modelId, sel){
+function _applyModelToDropdown(modelId, sel, preferredProviderId){
   if(!modelId||!sel) return null;
-  const resolved=_findModelInDropdown(modelId,sel);
+  const resolved=_findModelInDropdown(modelId,sel,preferredProviderId);
   if(resolved){
     sel.value=resolved;
     if(sel.id==='modelSelect' && typeof syncModelChip==='function') syncModelChip();
@@ -260,7 +278,7 @@ async function populateModelDropdown(){
     }
     // Set default model from server if no localStorage preference
     if(data.default_model && !localStorage.getItem('hermes-webui-model')){
-      _applyModelToDropdown(data.default_model, sel);
+      _applyModelToDropdown(data.default_model, sel, data.active_provider||null);
     }
     if(typeof syncModelChip==='function') syncModelChip();
     // Kick off a background live-model fetch for the active provider.
@@ -410,15 +428,24 @@ function _normalizeConfiguredModelKey(modelId){
   return s.replace(/-/g,'.');
 }
 
-function _getConfiguredModelBadge(modelId,badgeMap){
+function _getConfiguredModelBadge(modelId,badgeMap,providerId){
   const map=badgeMap||window._configuredModelBadges||{};
   if(!modelId||!map) return null;
-  if(map[modelId]) return map[modelId];
+  const provider=String(providerId||'').toLowerCase();
+  const exact=map[modelId];
+  if(exact && (!provider || !exact.provider || String(exact.provider).toLowerCase()===provider)) return exact;
   const targetNorm=_normalizeConfiguredModelKey(modelId);
+  const matches=[];
   for(const [candidate,badge] of Object.entries(map)){
-    if(_normalizeConfiguredModelKey(candidate)===targetNorm) return badge;
+    if(_normalizeConfiguredModelKey(candidate)===targetNorm) matches.push(badge);
   }
-  return null;
+  if(!matches.length) return null;
+  if(provider){
+    const providerMatch=matches.find(badge=>String(badge&&badge.provider||'').toLowerCase()===provider);
+    if(providerMatch) return providerMatch;
+    return matches.length===1 ? matches[0] : null;
+  }
+  return matches[0];
 }
 
 function syncModelChip(){
@@ -461,8 +488,9 @@ function renderModelDropdown(){
   const _badgeMap=window._configuredModelBadges||{};
   for(const child of Array.from(sel.children)){
     if(child.tagName==='OPTGROUP'){
+      const providerId=child.dataset&&child.dataset.provider?child.dataset.provider:'';
       for(const opt of Array.from(child.children)){
-        _modelData.push({value:opt.value,name:esc(opt.textContent||getModelLabel(opt.value)),id:esc(opt.value),group:child.label||'',badge:_getConfiguredModelBadge(opt.value,_badgeMap)});
+        _modelData.push({value:opt.value,name:esc(opt.textContent||getModelLabel(opt.value)),id:esc(opt.value),group:child.label||'',badge:_getConfiguredModelBadge(opt.value,_badgeMap,providerId)});
       }
     }
     if(child.tagName==='OPTION'){
