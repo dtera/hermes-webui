@@ -934,6 +934,7 @@ const LOCALES = {
     new_session: 'Новая сессия создана',
     compressing: 'Запрашиваю сжатие контекста...',
     token_usage_on: 'Отображение токенов включено',
+    usage_personality_none: 'none', // TODO: translate
     token_usage_off: 'Отображение токенов выключено',
     theme_usage: 'Использование: /theme ',
     theme_set: 'Тема: ',
@@ -980,6 +981,16 @@ const LOCALES = {
     model_search_no_results: 'Модели не найдены',
     model_search_placeholder: 'Поиск моделей…',
     model_scope_advisory: 'Применяется к этой беседе со следующего сообщения.',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_scope_toast: 'Применяется к этой беседе со следующего сообщения.',
     reference_only_label: 'Только справка',
     settings_label_skin: 'Скин',
@@ -1222,6 +1233,13 @@ const LOCALES = {
     provider_category_specialized: 'Специализированные',
     onboarding_api_key_label: 'Ключ API',
     onboarding_api_key_placeholder: 'Оставьте пустым, чтобы сохранить уже сохранённый ключ',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_help_prefix: 'Сохраняется как секрет в вашем файле `.env` Hermes с помощью',
     onboarding_base_url_label: 'Базовый URL',
     onboarding_base_url_placeholder: 'https://your-endpoint.example/v1',
@@ -1670,6 +1688,16 @@ const LOCALES = {
     model_custom_placeholder: 'p. ej. openai/gpt-5.4',
     model_search_placeholder: 'Buscar modelos…',
     model_search_no_results: 'No se encontraron modelos',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_scope_advisory: 'Se aplica a esta conversación desde tu próximo mensaje.',
     model_scope_toast: 'Se aplica a esta conversación desde tu próximo mensaje.',
     // commands.js
@@ -1710,6 +1738,7 @@ const LOCALES = {
     compress_failed_label: 'La compresión falló',
     focus_label: 'Tema',
     token_usage_on: 'Uso de tokens activado',
+    usage_personality_none: 'none', // TODO: translate
     token_usage_off: 'Uso de tokens desactivado',
     theme_usage: 'Uso: /theme ',
     theme_set: 'Tema: ',
@@ -1982,6 +2011,13 @@ const LOCALES = {
     provider_category_specialized: 'Especializados',
     onboarding_api_key_label: 'API key',
     onboarding_api_key_placeholder: 'Déjala en blanco para conservar una key ya guardada',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_help_prefix: 'Se guarda como secreto en tu archivo .env de Hermes usando',
     onboarding_base_url_label: 'Base URL',
     onboarding_base_url_placeholder: 'https://tu-endpoint.example/v1',
@@ -2448,6 +2484,7 @@ const LOCALES = {
     compress_failed_label: 'Komprimierung fehlgeschlagen',
     focus_label: 'Thema',
     token_usage_on: 'Token-Verbrauch an',
+    usage_personality_none: 'none', // TODO: translate
     token_usage_off: 'Token-Verbrauch aus',
     theme_usage: 'Nutzung: /theme ',
     theme_set: 'Theme: ',
@@ -2804,6 +2841,16 @@ const LOCALES = {
     model_custom_placeholder: 'z.B. openai/gpt-5.4',
     model_search_placeholder: 'Modelle suchen…',
     model_search_no_results: 'Keine Modelle gefunden',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     session_time_unknown: 'Unbekannt',
     session_time_minutes_ago: 'Vor {n} Minuten',
     session_time_hours_ago: 'Vor {n} Stunden',
@@ -2867,6 +2914,13 @@ const LOCALES = {
     provider_category_specialized: 'Spezialisiert',
     onboarding_api_key_label: 'API-Schlüssel',
     onboarding_api_key_placeholder: 'sk-…',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_help_prefix: 'Gefunden unter',
     onboarding_base_url_label: 'Base URL',
     onboarding_base_url_placeholder: 'https://api.openai.com/v1',
@@ -3162,6 +3216,16 @@ const LOCALES = {
     model_custom_placeholder: '\u4f8b\u5982 openai/gpt-5.4',
     model_search_placeholder: '\u641c\u7d22\u6a21\u578b\u2026',
     model_search_no_results: '\u672a\u627e\u5230\u6a21\u578b',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_scope_advisory: '\u4ece\u4e0b\u4e00\u6761\u6d88\u606f\u8d77\u5e94\u7528\u4e8e\u5f53\u524d\u5bf9\u8bdd\u3002',
     model_scope_toast: '\u4ece\u4e0b\u4e00\u6761\u6d88\u606f\u8d77\u5e94\u7528\u4e8e\u5f53\u524d\u5bf9\u8bdd\u3002',
     // commands.js
@@ -3201,6 +3265,7 @@ const LOCALES = {
     compress_failed_label: '\u538b\u7f29\u5931\u8d25',
     focus_label: '\u4e3b\u9898',
     token_usage_on: 'Token \u7528\u91cf\u663e\u793a\u5df2\u5f00\u542f',
+    usage_personality_none: 'none', // TODO: translate
     token_usage_off: 'Token \u7528\u91cf\u663e\u793a\u5df2\u5173\u95ed',
     theme_usage: '\u7528\u6cd5\uff1a/theme ',
     theme_set: '\u4e3b\u9898\uff1a',
@@ -3472,6 +3537,13 @@ const LOCALES = {
     provider_category_specialized: '专业服务',
     onboarding_api_key_label: 'API key',
     onboarding_api_key_placeholder: '留空可保留已保存的 key',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_help_prefix: '会作为密钥保存到 Hermes .env 文件中，变量名为',
     onboarding_base_url_label: 'Base URL',
     onboarding_base_url_placeholder: 'https://your-endpoint.example/v1',
@@ -4253,6 +4325,13 @@ const LOCALES = {
     onboarding_password_will_replace: '\u5c07\u53d6\u4ee3',
     onboarding_provider_label: '\u8a2d\u5b9a\u6a21\u5f0f',
     onboarding_quick_setup_badge: '\u5feb\u901f\u8a2d\u5b9a',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     provider_category_easy_start: '\u5feb\u901f\u958b\u59cb',
     provider_category_self_hosted: '\u672c\u5730 / \u958b\u6e90',
     provider_category_specialized: '\u5c08\u696d\u670d\u52d9',
@@ -4319,6 +4398,16 @@ const LOCALES = {
     model_custom_placeholder: '\u4f8b\u5982 openai/gpt-5.4',
     model_search_no_results: '\u627e\u4e0d\u5230\u6a21\u578b',
     model_search_placeholder: '\u641c\u5c0b\u6a21\u578b\u2026',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_scope_advisory: '\u5f9e\u4e0b\u4e00\u5247\u8a0a\u606f\u8d77\u9069\u7528\u65bc\u6b64\u6703\u8a71\u3002',
     model_scope_toast: '\u5f9e\u4e0b\u4e00\u5247\u8a0a\u606f\u8d77\u9069\u7528\u65bc\u6b64\u6703\u8a71\u3002',
     my_notes: '\u6211\u7684\u5099\u8a3b',
@@ -4728,6 +4817,16 @@ const LOCALES = {
     model_custom_label: 'ID de modelo customizado',
     model_custom_placeholder: 'ex: openai/gpt-5.4',
     model_search_placeholder: 'Buscar modelos…',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_search_no_results: 'Nenhum modelo encontrado',
     // commands.js
     cmd_clear: 'Limpar mensagens da conversa',
@@ -5133,6 +5232,13 @@ const LOCALES = {
     provider_category_self_hosted: 'Open / self-hosted',
     provider_category_specialized: 'Especializado',
     onboarding_api_key_label: 'API key',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_placeholder: 'Deixe em branco para manter key existente',
     onboarding_api_key_help_prefix: 'Salvo como segredo no .env do Hermes usando',
     onboarding_base_url_label: 'Base URL',
@@ -5414,6 +5520,16 @@ const LOCALES = {
     model_custom_label: 'Custom model ID',
     model_custom_placeholder: 'e.g. openai/gpt-5.4',
     model_search_placeholder: 'Search models…',
+    session_toolsets: 'Session Toolsets', // TODO: translate
+    session_toolsets_desc: 'Restrict available tools for this session (blank = use global config)', // TODO: translate
+    session_toolsets_global: 'Global (default)', // TODO: translate
+    session_toolsets_custom: 'Custom', // TODO: translate
+    session_toolsets_placeholder: 'tool1, tool2, \u2026', // TODO: translate
+    session_toolsets_apply: 'Apply', // TODO: translate
+    session_toolsets_clear: 'Clear (use global)', // TODO: translate
+    session_toolsets_applied: 'Toolsets updated', // TODO: translate
+    session_toolsets_cleared: 'Toolsets cleared — using global config', // TODO: translate
+    session_toolsets_failed: 'Failed to update toolsets: ', // TODO: translate
     model_search_no_results: 'No models found',
     model_scope_advisory: '다음 메시지부터 이 대화에 적용됩니다.',
     model_scope_toast: '다음 메시지부터 이 대화에 적용됩니다.',
@@ -5846,6 +5962,13 @@ const LOCALES = {
     provider_category_self_hosted: 'Open / self-hosted',
     provider_category_specialized: 'Specialized',
     onboarding_api_key_label: 'API key',
+    oauth_login_codex: 'Login with Codex (ChatGPT)', // TODO: translate
+    oauth_codex_step1: 'Step 1: Visit this URL and enter the code', // TODO: translate
+    oauth_codex_step2: 'Step 2: Enter this code on the page', // TODO: translate
+    oauth_codex_polling: 'Waiting for authorization...', // TODO: translate
+    oauth_codex_success: 'Codex OAuth login successful!', // TODO: translate
+    oauth_codex_error: 'OAuth login failed', // TODO: translate
+    oauth_codex_expired: 'Code expired, please try again', // TODO: translate
     onboarding_api_key_placeholder: 'Leave blank to keep an existing saved key',
     onboarding_api_key_help_prefix: 'Saved as a secret in your Hermes .env file using',
     onboarding_base_url_label: 'Base URL',
