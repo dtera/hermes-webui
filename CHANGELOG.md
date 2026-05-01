@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [v0.50.259] — 2026-05-01
+
+### Fixed
+- **SessionDB WAL handle leak — close before replacing on cached agent** — `_run_agent_streaming` created a new `SessionDB` instance per request and replaced the cached agent's `_session_db` reference without closing the old one. Each `SessionDB.__init__` opens a SQLite connection that holds 3 file descriptors once WAL kicks in (`state.db`, `state.db-wal`, `state.db-shm`). After ~73 messages on a long-lived agent (the empirically-confirmed crash count from the bug report), leaked FDs exhausted the 256 default limit causing `EMFILE` crashes. Fix wraps the swap with an explicit `agent._session_db.close()` (idempotent + thread-safe via SessionDB's internal `_lock` + `if self._conn:` guard). (`api/streaming.py`) @wali-reheman — PR #1421
+
+### Changed (Opus pre-release advisor)
+- **Same FD-leak fix applied to LRU eviction path** — `SESSION_AGENT_CACHE.popitem(last=False)` was dropping the evicted agent on the floor with `evicted_sid, _ = ...`. The agent's `_session_db` would only release its FDs when GC eventually finalized the agent — which on a long-running server may be never. Now captures the evicted entry, calls `_evicted_agent._session_db.close()` explicitly. Same shape as #1421's fix on the cached-agent reuse path. 5 regression tests in `test_v050259_sessiondb_fd_leak.py` cover both paths plus `SessionDB.close()` idempotency. (`api/streaming.py`, `tests/test_v050259_sessiondb_fd_leak.py`)
+
+
 ## [v0.50.258] — 2026-05-01
 
 ### Fixed
