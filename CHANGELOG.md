@@ -1,9 +1,9 @@
 # Hermes Web UI -- Changelog
 
-## [Unreleased]
+## [v0.50.261] — 2026-05-02
 
 ### Changed
-- **Composer footer: hide session-toolsets chip temporarily** — the per-session toolsets restriction chip (introduced in #493) made the composer footer too cramped on narrow widths once it was sharing space with model, reasoning, profile, and context indicators. Hidden via `_applyToolsetsChip()` setting `display:none` on the wrap; the underlying state and `/api/session/toolsets` endpoint still work, so any cron job or scripted client that relies on `enabled_toolsets` continues unaffected. To be revisited when the footer layout is redesigned (#1431). (`static/ui.js`)
+- **Composer footer: session-toolsets chip is now responsive** — the per-session toolsets restriction chip (introduced in #493) was crowding the composer footer on standard widths once it shared space with model, reasoning, profile, workspace, context-ring, and send. The PR #1433 fix hid it unconditionally via JS; this release replaces that with a responsive CSS rule so the chip is visible only when the composer-footer container is at least 1100px wide (i.e. wide desktops with the workspace panel closed). At narrower widths the chip is hidden by the base CSS rule, and the existing `@container composer-footer (max-width: 520px)` and `@media (max-width: 640px)` rules continue to enforce hidden on tablets and phones. JS no longer sets `display:none` directly — visibility is controlled entirely by CSS so the responsive cascade is the single source of truth. The underlying state and `/api/session/toolsets` endpoint continue to work for cron and scripted callers regardless of UI visibility. Inline `style="display:none"` removed from `index.html` so the CSS base rule is the only source of the default-hidden state. 10 new regression tests in `tests/test_issue1431_toolsets_chip_responsive.py` pin the base rule, the wide-container reveal rule, the narrow-container hide rule, the mobile viewport hide rule, the JS-doesn't-force-display-none invariant, and that `/api/session/toolsets` plus `toggleToolsetsDropdown`/`_populateToolsetsDropdown` machinery is preserved. Refs #1431, #1433. @nesquena-hermes (`static/ui.js`, `static/style.css`, `static/index.html`, `tests/test_issue1431_toolsets_chip_responsive.py`)
 
 ## [v0.50.260] — 2026-05-01
 

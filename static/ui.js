@@ -928,10 +928,14 @@ function _applyToolsetsChip(toolsets) {
   const label = $('composerToolsetsLabel');
   const chip = $('composerToolsetsChip');
   if (!wrap || !label) return;
-  // Temporarily hidden — composer footer is too cramped (#1431). State is still
-  // tracked so /api/session/toolsets continues to work; just the chip UI is hidden
-  // until we redesign the footer layout.
-  wrap.style.display = 'none';
+  // Visibility is controlled entirely by responsive CSS — the chip shows only
+  // at wide composer-footer widths (>= 1100px container query). At narrower
+  // widths the layout is too cramped (model + reasoning + profile + workspace
+  // + context-ring + send) to add another chip. Cleared inline style so the
+  // CSS @container query is the single source of truth. State is still
+  // tracked so /api/session/toolsets continues to work for cron/scripted
+  // callers regardless of UI visibility. (#1431)
+  wrap.style.display = '';
   const hasCustom = Array.isArray(toolsets) && toolsets.length > 0;
   if (hasCustom) {
     label.textContent = toolsets.join(', ');
