@@ -1203,9 +1203,11 @@
      toolsets+context-ring+send all need room to breathe, see #1431). At
      narrower container widths the chip is hidden by the base rule above —
      the underlying state and /api/session/toolsets endpoint continue to work
-     for scripted callers regardless of UI visibility. */
+     for scripted callers regardless of UI visibility. Uses display:block to
+     match sibling wraps (.composer-profile-wrap, .composer-model-wrap, etc.)
+     rather than display:flex — the chip child has its own inline-flex layout. */
   @container composer-footer (min-width: 1100px) {
-    .composer-toolsets-wrap{display:flex;}
+    .composer-toolsets-wrap{display:block;}
   }
 
   @media(max-width:640px){

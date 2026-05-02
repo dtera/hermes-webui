@@ -36,14 +36,15 @@ class TestToolsetsChipResponsiveCSS:
     def test_wide_container_query_shows_chip(self):
         """An @container composer-footer (min-width: 1100px) rule must reveal the chip."""
         css = _src("style.css")
-        # Find the min-width container query
+        # Find the min-width container query — accept either display:block or display:flex
+        # (we use block to match sibling wraps but either is a valid reveal)
         m = re.search(
-            r'@container\s+composer-footer\s*\(\s*min-width:\s*1100px\s*\)\s*\{[^}]*\.composer-toolsets-wrap\s*\{[^}]*display:\s*flex[^}]*\}',
+            r'@container\s+composer-footer\s*\(\s*min-width:\s*1100px\s*\)\s*\{[^}]*\.composer-toolsets-wrap\s*\{[^}]*display:\s*(block|flex)[^}]*\}',
             css, re.DOTALL,
         )
         assert m, (
             "Must have @container composer-footer (min-width: 1100px) rule "
-            "that shows .composer-toolsets-wrap with display:flex"
+            "that shows .composer-toolsets-wrap with display:block or display:flex"
         )
 
     def test_narrow_container_query_keeps_hiding(self):
@@ -175,4 +176,71 @@ class TestToolsetsAPIStillWorks:
         )
         assert "_populateToolsetsDropdown" in js, (
             "_populateToolsetsDropdown must still exist for picker population"
+        )
+
+
+class TestToolsetsDropdownResizeGuard:
+    """Opus-found defense: dropdown must close when chip becomes hidden by CSS.
+
+    The dropdown is a DOM sibling of the wrap, not a child. CSS hiding the
+    wrap (e.g. by crossing the 1100px container threshold mid-session via the
+    workspace-panel toggle) does NOT cascade-hide the open dropdown. Without
+    a guard, the dropdown would either snap to the footer's left edge with no
+    anchor, or stay open with no visible chip to dismiss it from.
+    """
+
+    def test_resize_handler_closes_dropdown_when_chip_hidden(self):
+        """Resize listener must close dropdown when the chip is no longer visible."""
+        js = _src("ui.js")
+        # Find the resize handler block for the toolsets dropdown
+        # It must check chip.offsetParent === null and close, not reposition
+        m = re.search(
+            r"window\.addEventListener\('resize',\s*\([^)]*\)\s*=>\s*\{[^}]*composerToolsetsDropdown[^}]*\}",
+            js, re.DOTALL,
+        )
+        assert m, "Toolsets resize handler must exist"
+        body = m.group(0)
+        assert "offsetParent" in body, (
+            "Resize handler must check chip.offsetParent === null — without it "
+            "the open dropdown stays open after CSS hides the chip mid-session "
+            "(e.g. workspace-panel toggle crossing 1100px threshold)"
+        )
+        assert "closeToolsetsDropdown" in body, (
+            "Resize handler must call closeToolsetsDropdown() when chip is "
+            "hidden — repositioning a hidden chip leaves the dropdown anchored "
+            "to a zero-rect element"
+        )
+
+    def test_position_dropdown_guards_against_hidden_chip(self):
+        """_positionToolsetsDropdown must close-not-reposition if chip hidden."""
+        js = _src("ui.js")
+        m = re.search(
+            r"function _positionToolsetsDropdown\(\)\s*\{.*?\n\}",
+            js, re.DOTALL,
+        )
+        assert m, "_positionToolsetsDropdown function must exist"
+        body = m.group(0)
+        # Defense-in-depth: even direct callers of _positionToolsetsDropdown
+        # must not anchor to a hidden chip.
+        assert "offsetParent" in body, (
+            "_positionToolsetsDropdown must check chip.offsetParent === null "
+            "before reading getBoundingClientRect — defense-in-depth"
+        )
+
+    def test_toggle_dropdown_guards_against_hidden_chip(self):
+        """toggleToolsetsDropdown must early-return if chip is hidden by CSS."""
+        js = _src("ui.js")
+        m = re.search(
+            r"function toggleToolsetsDropdown\(\)\s*\{.*?\n\}",
+            js, re.DOTALL,
+        )
+        assert m, "toggleToolsetsDropdown function must exist"
+        body = m.group(0)
+        # Currently the only invoker is the chip's own onclick (so this is
+        # latent), but defensive guard is needed because the function is in
+        # global scope and could be called by future #1431 redesign code.
+        assert "offsetParent" in body, (
+            "toggleToolsetsDropdown must check chip.offsetParent === null "
+            "before opening — function is global and could be invoked when "
+            "the chip is hidden by responsive CSS"
         )
