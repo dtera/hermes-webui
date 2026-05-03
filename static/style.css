@@ -488,6 +488,18 @@
   .onboarding-field span{font-size:12px;font-weight:700;color:var(--text);}
   .onboarding-field input,.onboarding-field select{margin-bottom:0;padding:10px 12px;border-radius:10px;font-size:13px;background:var(--input-bg);border:1px solid var(--border2);color:var(--text);}
   .onboarding-copy{font-size:12px;color:var(--muted);line-height:1.7;}
+  /* Onboarding probe (#1499) — Test connection button + status banner */
+  .onboarding-probe-row{display:flex;justify-content:flex-end;margin-top:-2px;}
+  .onboarding-probe-btn{padding:6px 12px;font-size:12px;font-weight:600;border-radius:8px;background:var(--input-bg);border:1px solid var(--border2);color:var(--text);cursor:pointer;}
+  .onboarding-probe-btn:hover:not(:disabled){border-color:var(--accent);}
+  .onboarding-probe-btn:disabled{opacity:.55;cursor:wait;}
+  .onboarding-probe-banner{margin:6px 0 0;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--input-bg);}
+  .onboarding-probe-banner.onboarding-probe-ok{border-color:#1f8a4f;color:#9ce0b4;background:rgba(31,138,79,.12);}
+  .onboarding-probe-banner.onboarding-probe-probing{color:var(--muted);}
+  .onboarding-probe-banner.onboarding-probe-error{border-color:#9c3a3a;color:#f5a3a3;background:rgba(156,58,58,.12);}
+  /* Onboarding api-key keyless hint (#1499 third sub-bug) — subtle muted text */
+  /* sized below the input so it reads as inline help, not a banner. */
+  .onboarding-api-key-help{margin:4px 0 0;font-size:11px;color:var(--muted);font-style:italic;}
   .onboarding-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
   .onboarding-summary div{padding:14px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;flex-direction:column;gap:5px;}
   .onboarding-summary strong{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}

@@ -100,26 +100,43 @@ class TestIssue1420LMStudioProviderEnvVar:
     """
 
     def test_lmstudio_in_provider_env_var_dict(self):
-        """`_PROVIDER_ENV_VAR['lmstudio']` must equal `'LMSTUDIO_API_KEY'`."""
-        from api.providers import _PROVIDER_ENV_VAR
+        """`_PROVIDER_ENV_VAR['lmstudio']` must equal `'LM_API_KEY'` (canonical, agent-aligned).
+
+        The original #1420 fix used `'LMSTUDIO_API_KEY'`. After #1500 (cross-tool
+        env-var alignment with the agent CLI) the canonical name is `LM_API_KEY`,
+        and `LMSTUDIO_API_KEY` is preserved as a read-only legacy alias in
+        `_PROVIDER_ENV_VAR_ALIASES` so existing users don't lose detection.
+        """
+        from api.providers import _PROVIDER_ENV_VAR, _PROVIDER_ENV_VAR_ALIASES
         assert "lmstudio" in _PROVIDER_ENV_VAR, (
             "_PROVIDER_ENV_VAR is missing the 'lmstudio' entry — Settings → "
             "Providers will render LM Studio as has_key=False / "
-            "configurable=False even with LMSTUDIO_API_KEY set in .env. See #1420."
+            "configurable=False. See #1420."
         )
-        assert _PROVIDER_ENV_VAR["lmstudio"] == "LMSTUDIO_API_KEY", (
+        assert _PROVIDER_ENV_VAR["lmstudio"] == "LM_API_KEY", (
             f"_PROVIDER_ENV_VAR['lmstudio'] = {_PROVIDER_ENV_VAR['lmstudio']!r}, "
-            f"expected 'LMSTUDIO_API_KEY'. The onboarding wizard writes the "
-            f"key to LMSTUDIO_API_KEY in .env (api/onboarding.py:73-80) and "
-            f"the runtime in hermes_cli reads it under that name; the Settings "
-            f"detection path must look at the same name."
+            f"expected 'LM_API_KEY' to match the agent CLI's "
+            f"hermes_cli/auth.py:lmstudio.api_key_env_vars. See #1500."
+        )
+        # The legacy alias must still be registered so users with the pre-#1500
+        # env var don't lose detection on upgrade.
+        assert "lmstudio" in _PROVIDER_ENV_VAR_ALIASES, (
+            "_PROVIDER_ENV_VAR_ALIASES['lmstudio'] missing — pre-#1500 users "
+            "with LMSTUDIO_API_KEY in their .env will see Settings flip to "
+            "'no key' on upgrade.  Keep the alias for at least a few releases."
+        )
+        assert "LMSTUDIO_API_KEY" in _PROVIDER_ENV_VAR_ALIASES["lmstudio"], (
+            f"Expected 'LMSTUDIO_API_KEY' as a legacy alias for lmstudio, got "
+            f"{_PROVIDER_ENV_VAR_ALIASES['lmstudio']!r}."
         )
 
     def test_lmstudio_has_key_true_when_env_var_set(self, monkeypatch, tmp_path):
-        """LMSTUDIO_API_KEY in env should mark LM Studio configured in Settings."""
+        """`LM_API_KEY` in env should mark LM Studio configured in Settings (canonical, post-#1500)."""
         _install_fake_hermes_cli(monkeypatch)
         monkeypatch.setattr(profiles, "get_active_hermes_home", lambda: tmp_path)
-        monkeypatch.setenv("LMSTUDIO_API_KEY", "lm-studio")
+        monkeypatch.delenv("LMSTUDIO_API_KEY", raising=False)
+        monkeypatch.delenv("LM_API_KEY", raising=False)
+        monkeypatch.setenv("LM_API_KEY", "lm-studio")
 
         restore = _swap_in_test_config({"model": {"provider": "lmstudio"}})
         try:
@@ -160,6 +177,7 @@ class TestIssue1420LMStudioProviderEnvVar:
         _install_fake_hermes_cli(monkeypatch)
         monkeypatch.setattr(profiles, "get_active_hermes_home", lambda: tmp_path)
         monkeypatch.delenv("LMSTUDIO_API_KEY", raising=False)
+        monkeypatch.delenv("LM_API_KEY", raising=False)
 
         restore = _swap_in_test_config({
             "model": {"provider": "lmstudio"},
@@ -191,6 +209,7 @@ class TestIssue1420LMStudioProviderEnvVar:
         _install_fake_hermes_cli(monkeypatch)
         monkeypatch.setattr(profiles, "get_active_hermes_home", lambda: tmp_path)
         monkeypatch.delenv("LMSTUDIO_API_KEY", raising=False)
+        monkeypatch.delenv("LM_API_KEY", raising=False)
 
         restore = _swap_in_test_config({"model": {"provider": "lmstudio"}})
         try:
@@ -226,10 +245,12 @@ class TestIssue1420LMStudioProviderEnvVar:
             "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "MINIMAX_API_KEY",
             "MINIMAX_CN_API_KEY", "MISTRAL_API_KEY", "XAI_API_KEY",
             "GLM_API_KEY", "KIMI_API_KEY", "OPENCODE_ZEN_API_KEY",
-            "OPENCODE_GO_API_KEY", "NVIDIA_API_KEY",
+            "OPENCODE_GO_API_KEY", "NVIDIA_API_KEY", "LMSTUDIO_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
-        monkeypatch.setenv("LMSTUDIO_API_KEY", "lm-studio")
+        # Set the canonical post-#1500 env var; sibling providers must not
+        # cross-detect.
+        monkeypatch.setenv("LM_API_KEY", "lm-studio")
 
         restore = _swap_in_test_config({"model": {"provider": "lmstudio"}})
         try:
@@ -249,11 +270,11 @@ class TestIssue1420LMStudioProviderEnvVar:
                 if pid.startswith("custom"):
                     continue
                 assert entry["has_key"] is False, (
-                    f"LMSTUDIO_API_KEY in env caused {pid!r} to flip "
-                    f"has_key=True (cross-detection leak). Pre-fix this was "
-                    f"never an issue because lmstudio wasn't in "
-                    f"_PROVIDER_ENV_VAR at all; with the fix in place we have "
-                    f"to verify the new entry doesn't bleed into a sibling."
+                    f"LM_API_KEY in env caused {pid!r} to flip "
+                    f"has_key=True (cross-detection leak). LM_API_KEY is "
+                    f"unique to lmstudio in _PROVIDER_ENV_VAR; this test "
+                    f"future-proofs against a regression that adds it to "
+                    f"a sibling."
                 )
         finally:
             restore()
