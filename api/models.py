@@ -366,7 +366,7 @@ class Session:
         return SESSION_DIR / f'{self.session_id}.json'
 
     def save(self, touch_updated_at: bool = True, skip_index: bool = False) -> None:
-        # ── #1557 P0 guard ──────────────────────────────────────────────
+        # ── #1558 P0 guard ──────────────────────────────────────────────
         # Refuse to save a session that was loaded with metadata_only=True.
         # Such sessions have messages=[] (it's the whole point of the partial
         # load), and save() unconditionally writes self.messages to disk via
@@ -381,7 +381,7 @@ class Session:
                 f"Refusing to save metadata-only session {self.session_id!r}: "
                 f"would atomically overwrite on-disk messages with []. "
                 f"Reload with metadata_only=False before mutating state. "
-                f"See #1557."
+                f"See #1558."
             )
         if touch_updated_at:
             self.updated_at = time.time()
@@ -409,14 +409,14 @@ class Session:
                  and not k.startswith('_')}
         payload = json.dumps({**meta, **extra}, ensure_ascii=False, indent=2)
 
-        # ── #1557 backup safeguard ──────────────────────────────────────
+        # ── #1558 backup safeguard ──────────────────────────────────────
         # Before overwriting the session file, copy the previous version to
         # ``<sid>.json.bak`` IFF the previous file has more messages than the
         # incoming payload. The asymmetric guard means:
         #   * Normal grow-the-conversation saves never produce a backup
         #     (incoming messages >= existing) — keeps disk overhead near zero.
         #   * Any save that would shrink the messages array (the failure mode
-        #     of #1557, plus anything similar in the future) leaves a recoverable
+        #     of #1558, plus anything similar in the future) leaves a recoverable
         #     snapshot of the pre-shrink state on disk.
         # The recovery path is api/session_recovery.py — at server startup and
         # via /api/session/recover, sessions whose JSON has fewer messages than
@@ -497,7 +497,7 @@ class Session:
             # on-disk JSON with messages=[], wiping the conversation. Any
             # caller that needs to mutate persisted state on a metadata-only
             # session must reload it with metadata_only=False first.
-            # See #1557 — v0.50.279 _clear_stale_stream_state() data-loss bug.
+            # See #1558 — v0.50.279 _clear_stale_stream_state() data-loss bug.
             session._loaded_metadata_only = True
             return session
         except Exception:

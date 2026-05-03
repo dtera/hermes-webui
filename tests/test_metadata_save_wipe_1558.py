@@ -1,5 +1,5 @@
 """
-P0 regression test for the metadata-only save-wipe (#1557).
+P0 regression test for the metadata-only save-wipe (#1558).
 
 Before this fix, `_clear_stale_stream_state()` could be called on a session
 loaded with `metadata_only=True` (which means messages=[]). That handler called
@@ -63,7 +63,7 @@ def _make_session_on_disk(session_dir, sid="s_test_1557", n_msgs=1000, with_acti
 
 
 def test_metadata_only_save_raises_to_prevent_wipe(temp_session_dir):
-    """Direct test of the #1557 guard: save() must refuse to wipe on-disk messages."""
+    """Direct test of the #1558 guard: save() must refuse to wipe on-disk messages."""
     from api.models import get_session
     sid = _make_session_on_disk(temp_session_dir, n_msgs=1000)
 
@@ -76,7 +76,7 @@ def test_metadata_only_save_raises_to_prevent_wipe(temp_session_dir):
     assert len(s.messages) == 0, "metadata-only load synthesizes empty messages — that's its job"
     assert getattr(s, "_loaded_metadata_only", False) is True, (
         "load_metadata_only() must set the _loaded_metadata_only flag so save() "
-        "knows to refuse this save and prevent #1557 data-loss."
+        "knows to refuse this save and prevent #1558 data-loss."
     )
 
     # Mutate as the buggy code path did, then attempt to save.
@@ -94,7 +94,7 @@ def test_metadata_only_save_raises_to_prevent_wipe(temp_session_dir):
 
 
 def test_clear_stale_stream_state_preserves_messages(temp_session_dir):
-    """High-level: the production trigger from #1557 must NOT wipe messages."""
+    """High-level: the production trigger from #1558 must NOT wipe messages."""
     from api.models import get_session
     sid = _make_session_on_disk(temp_session_dir, n_msgs=1000, with_active_stream=True)
 
@@ -120,7 +120,7 @@ def test_clear_stale_stream_state_preserves_messages(temp_session_dir):
     raw = json.loads((temp_session_dir / f"{sid}.json").read_text(encoding="utf-8"))
     assert len(raw["messages"]) >= 1000, (
         f"_clear_stale_stream_state() shrank messages to {len(raw['messages'])} — "
-        "see #1557. It must clear the stream flags WITHOUT losing existing messages."
+        "see #1558. It must clear the stream flags WITHOUT losing existing messages."
     )
     # And the stream flag must actually be cleared (whether by _repair_stale_pending
     # during the reload or by the explicit clear afterwards).
@@ -136,7 +136,7 @@ def test_save_writes_bak_when_messages_shrink(temp_session_dir):
     sid = _make_session_on_disk(temp_session_dir, n_msgs=1000, with_active_stream=False)
 
     # Build a fresh in-memory Session with a smaller messages array, then save —
-    # this models the precise failure shape of #1557 (a caller mutates messages
+    # this models the precise failure shape of #1558 (a caller mutates messages
     # downward and saves). We construct the Session directly rather than going
     # through get_session() so we don't trigger _repair_stale_pending side-effects.
     s = Session(
@@ -150,7 +150,7 @@ def test_save_writes_bak_when_messages_shrink(temp_session_dir):
 
     bak_path = temp_session_dir / f"{sid}.json.bak"
     assert bak_path.exists(), (
-        "save() that shrinks messages must leave a .bak — #1557 backup safeguard."
+        "save() that shrinks messages must leave a .bak — #1558 backup safeguard."
     )
     bak_data = json.loads(bak_path.read_text(encoding="utf-8"))
     assert len(bak_data["messages"]) == 1000, (

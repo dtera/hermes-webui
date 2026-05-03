@@ -1,6 +1,6 @@
 """
 Session recovery from .bak snapshots — last line of defense against
-data-loss bugs like #1557.
+data-loss bugs like #1558.
 
 ``Session.save()`` writes a ``<sid>.json.bak`` snapshot of the previous
 state whenever an incoming save would shrink the messages array. This
@@ -100,7 +100,7 @@ def recover_session(session_path: Path) -> dict:
         return {**status, "restored": False, "error": str(exc)}
     logger.warning(
         "recover_session: restored %s from .bak (live=%d → bak=%d messages). "
-        "See #1557 for the data-loss class this guards against.",
+        "See #1558 for the data-loss class this guards against.",
         session_path.name, status["live_messages"], status["bak_messages"],
     )
     return {**status, "restored": True}
@@ -126,6 +126,6 @@ def recover_all_sessions_on_startup(session_dir: Path) -> dict:
         logger.warning(
             "recover_all_sessions_on_startup: restored %d/%d sessions from .bak. "
             "If you weren't expecting this, check the session list for missing "
-            "messages — see #1557.", restored, scanned,
+            "messages — see #1558.", restored, scanned,
         )
     return {"scanned": scanned, "restored": restored, "details": details}

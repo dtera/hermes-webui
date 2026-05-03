@@ -328,7 +328,7 @@ def _clear_stale_stream_state(session) -> bool:
     session JSON while STREAMS is empty. The frontend then keeps reconnecting to
     a dead stream and shows a permanent running/thinking state.
 
-    SAFETY (#1557): If ``session`` was loaded with ``metadata_only=True``, its
+    SAFETY (#1558): If ``session`` was loaded with ``metadata_only=True``, its
     ``messages`` array is empty by design and calling ``save()`` would
     atomically overwrite the on-disk JSON, wiping the conversation. In that
     case we re-load the full session before mutating, so the persisted
@@ -356,7 +356,7 @@ def _clear_stale_stream_state(session) -> bool:
             logger.warning(
                 "_clear_stale_stream_state: refused to clear stale stream %s "
                 "for session %s — full reload failed and we will not save a "
-                "metadata-only stub. See #1557.",
+                "metadata-only stub. See #1558.",
                 stream_id, getattr(session, "session_id", "?"),
             )
             return False
