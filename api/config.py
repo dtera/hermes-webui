@@ -899,6 +899,122 @@ def _format_nous_label(mid: str) -> str:
     return f"{base} (via Nous)"
 
 
+# Soft cap on how many Nous Portal models surface in the picker dropdown.
+# Above this count, _build_nous_featured_set() trims the visible list to
+# ~_NOUS_FEATURED_TARGET entries; the full catalog is still returned to the
+# client under ``extra_models`` so /model autocomplete covers everything.
+# Caps reflect human scannability — a 25-row dropdown is the practical UX
+# ceiling, and per-vendor sampling at 15 keeps the flagship shape visible
+# without one vendor dominating.
+_NOUS_FEATURED_THRESHOLD = 25
+_NOUS_FEATURED_TARGET = 15
+
+# Vendor-prefix priority order for featured selection. Lower index = picked
+# earlier when sampling the live catalog. Reflects which vendors users have
+# historically reached for first via Nous Portal (driven by the curated
+# static list maintained in _PROVIDER_MODELS["nous"] and Discord feedback).
+_NOUS_VENDOR_PRIORITY = (
+    "anthropic", "openai", "google", "moonshotai", "z-ai",
+    "minimax", "qwen", "x-ai", "deepseek", "stepfun",
+    "xiaomi", "tencent", "nvidia", "arcee-ai",
+)
+
+
+def _build_nous_featured_set(
+    live_ids: list[str],
+    *,
+    selected_model_id: str | None = None,
+    target: int = _NOUS_FEATURED_TARGET,
+) -> tuple[list[str], list[str]]:
+    """Trim a Nous Portal catalog into a (featured, extras) split.
+
+    ``featured`` is what the picker dropdown renders. ``extras`` is everything
+    else — kept available so the slash-command `/model` autocomplete and the
+    ``_dynamicModelLabels`` map cover the full catalog.
+
+    Selection rules (in order, deterministic):
+
+    1. Always include the user's currently-selected model if it's in the
+       catalog (preserves selection stickiness — no orphan IDs in the
+       dropdown after a refresh).
+    2. Always include every entry from the curated static
+       ``_PROVIDER_MODELS["nous"]`` list whose id maps onto a live id —
+       those four are explicitly maintained as flagship picks.
+    3. Top up to ``target`` by walking ``_NOUS_VENDOR_PRIORITY`` round-robin
+       (one model per vendor each pass) so no vendor monopolises the slot
+       budget. Within a vendor, the original ``live_ids`` order is preserved
+       — that's the order Nous Portal returned, which approximates recency.
+
+    Returns ``(featured_ids, extras_ids)`` — both lists are subsets of
+    ``live_ids`` with disjoint membership and union equal to ``live_ids``.
+
+    For catalogs ≤ ``_NOUS_FEATURED_THRESHOLD`` entries the function is a
+    no-op: ``featured == live_ids``, ``extras == []``.
+    """
+    if not live_ids:
+        return [], []
+    if len(live_ids) <= _NOUS_FEATURED_THRESHOLD:
+        return list(live_ids), []
+
+    chosen: list[str] = []  # preserves insertion order
+    chosen_set: set[str] = set()
+
+    def _add(mid: str) -> None:
+        if mid and mid not in chosen_set:
+            chosen.append(mid)
+            chosen_set.add(mid)
+
+    # Rule 1: sticky selection. Strip "@nous:" prefix if present so we can
+    # match against the live id space (which is bare "vendor/model").
+    if selected_model_id:
+        sel = selected_model_id
+        if sel.startswith("@nous:"):
+            sel = sel[len("@nous:"):]
+        if sel in live_ids:
+            _add(sel)
+
+    # Rule 2: curated flagships. Extract the bare ids from the static list
+    # entries (which are stored as "@nous:vendor/model").
+    for static in _PROVIDER_MODELS.get("nous", []):
+        sid = static.get("id", "")
+        if sid.startswith("@nous:"):
+            sid = sid[len("@nous:"):]
+        if sid in live_ids:
+            _add(sid)
+
+    # Rule 3: vendor-priority round-robin top-up.
+    by_vendor: dict[str, list[str]] = {}
+    for mid in live_ids:
+        if mid in chosen_set:
+            continue
+        vendor = mid.split("/", 1)[0] if "/" in mid else ""
+        by_vendor.setdefault(vendor, []).append(mid)
+
+    # Walk vendors in priority order, then any leftover vendors alphabetically.
+    priority = list(_NOUS_VENDOR_PRIORITY)
+    leftover = sorted(v for v in by_vendor if v not in set(priority))
+    vendor_order = priority + leftover
+
+    # Round-robin: one model per vendor per pass until we hit the target or
+    # exhaust every bucket.
+    while len(chosen) < target:
+        added_this_pass = 0
+        for vendor in vendor_order:
+            if len(chosen) >= target:
+                break
+            bucket = by_vendor.get(vendor)
+            if not bucket:
+                continue
+            _add(bucket.pop(0))
+            added_this_pass += 1
+        if added_this_pass == 0:
+            break  # all buckets empty
+
+    # Anything not chosen becomes extras (full-catalog completion surface).
+    extras = [m for m in live_ids if m not in chosen_set]
+    return chosen, extras
+
+
 def _apply_provider_prefix(
     raw_models: list[dict],
     provider_id: str,
@@ -1767,6 +1883,22 @@ def get_available_models() -> dict:
                     logger.debug("Failed to get key source for provider %s", _p.get("id", "unknown"))
                 detected_providers.add(_p["id"])
             _hermes_auth_used = True
+
+            # Belt-and-braces: list_available_providers() is the primary signal
+            # for OAuth providers, but its `authenticated` field can disagree
+            # with `get_auth_status(<id>).logged_in` on some hermes_cli versions
+            # (the two fields are computed via different code paths). When the
+            # disagreement happens for Nous Portal, the Settings → Providers
+            # card renders the live catalog (because api/providers.py iterates
+            # all OAuth providers regardless of authentication state) but the
+            # picker dropdown comes up empty — a confusing asymmetry reported
+            # in #1567. Add Nous explicitly when get_auth_status agrees so the
+            # picker stays in sync with the providers card.
+            try:
+                if _gas("nous").get("logged_in"):
+                    detected_providers.add("nous")
+            except Exception:
+                logger.debug("Failed to check Nous Portal auth status")
         except Exception:
             logger.debug("Failed to detect auth providers from hermes")
 
@@ -2241,43 +2373,102 @@ def get_available_models() -> dict:
                             }
                         )
                 elif pid == "nous":
-                    # Nous Portal exposes a curated catalog (~30 models, currently)
-                    # via inference-api.nousresearch.com. Like ollama-cloud, we
+                    # Nous Portal exposes a curated catalog (~30 models on most
+                    # accounts, up to several hundred for enterprise tiers) via
+                    # inference-api.nousresearch.com. Like ollama-cloud, we
                     # live-fetch through hermes_cli.models.provider_model_ids()
                     # rather than relying on the static four-entry list, which
-                    # chronically drifts out of date (#1538). Fall back to the
-                    # static list when hermes_cli is unavailable (test envs,
-                    # package mismatches) so the picker is never empty.
+                    # chronically drifts out of date (#1538).
+                    #
+                    # When the catalog exceeds _NOUS_FEATURED_THRESHOLD (~25)
+                    # the picker dropdown gets a curated subset to stay
+                    # scannable — the full list is still returned under
+                    # "extra_models" for the slash-command autocomplete and
+                    # the dynamic-label map (#1567). The optgroup label is
+                    # decorated with the truncation count so users know more
+                    # exists.
                     raw_models = []
+                    extra_models: list[dict] = []
+                    truncated_label_suffix = ""
+                    live_fetch_failed = False
                     try:
                         from hermes_cli.models import provider_model_ids as _provider_model_ids
 
                         live_ids = _provider_model_ids("nous") or []
-                        raw_models = [
-                            # Prefix every live id with "@nous:" so routing matches
-                            # the explicit-provider-hint branch of resolve_model_provider
-                            # (same convention as the curated static list — see
-                            # tests/test_nous_portal_routing.py for the invariant).
-                            {"id": f"@nous:{mid}", "label": _format_nous_label(mid)}
-                            for mid in live_ids
-                        ]
                     except Exception:
                         logger.warning("Failed to load Nous Portal models from hermes_cli")
+                        live_ids = []
+                        live_fetch_failed = True
 
-                    if not raw_models:
-                        # Static fallback: deepcopy so dedup/prefix mutation
-                        # below does not bleed into the module-level catalog.
+                    if live_ids:
+                        # Sticky-selection signal: prefer the explicitly-active
+                        # model from cfg["model"]["model"] (what the user is
+                        # currently using) over cfg["model"]["default"] (the
+                        # configured default suggestion). Falls back to the
+                        # latter so first-load before any selection still works.
+                        _model_cfg = cfg.get("model", {})
+                        _selected = (
+                            (isinstance(_model_cfg, dict) and _model_cfg.get("model"))
+                            or default_model
+                            or None
+                        )
+                        featured_ids, extras_ids = _build_nous_featured_set(
+                            live_ids,
+                            selected_model_id=_selected,
+                        )
+                        # Prefix every live id with "@nous:" so routing matches
+                        # the explicit-provider-hint branch of resolve_model_provider
+                        # (same convention as the curated static list — see
+                        # tests/test_nous_portal_routing.py for the invariant).
+                        raw_models = [
+                            {"id": f"@nous:{mid}", "label": _format_nous_label(mid)}
+                            for mid in featured_ids
+                        ]
+                        extra_models = [
+                            {"id": f"@nous:{mid}", "label": _format_nous_label(mid)}
+                            for mid in extras_ids
+                        ]
+                        if extras_ids:
+                            # Show "(15 of 397)" so the user understands the picker
+                            # is showing a featured subset, not a broken short list.
+                            truncated_label_suffix = (
+                                f" ({len(featured_ids)} of {len(live_ids)})"
+                            )
+                    elif not live_fetch_failed:
+                        # Live-fetch returned an empty list AND did not raise —
+                        # the user is gated as authenticated by detection above
+                        # but the catalog endpoint replied with no models.
+                        # Showing the static 4-entry curated list here would
+                        # contradict the providers card (which always shows
+                        # the live catalog) — exactly the asymmetry #1567
+                        # reports. Omit the Nous group entirely; the providers
+                        # card already tells the truth, and a transient empty
+                        # response will self-heal on the next cache rebuild.
+                        logger.warning(
+                            "Nous Portal authenticated but live-fetch returned empty — "
+                            "omitting from picker (will retry on next cache rebuild)"
+                        )
+                    else:
+                        # hermes_cli unavailable / raised — fall back to the
+                        # curated 4-entry static list so the picker is never
+                        # empty in this degraded state. This matches pre-#1538
+                        # behaviour for environments without hermes_cli (test
+                        # envs, package mismatches, isolated WebUI builds).
                         raw_models = copy.deepcopy(_PROVIDER_MODELS.get("nous", []))
 
                     if raw_models:
                         models = _apply_provider_prefix(raw_models, pid, active_provider)
-                        groups.append(
-                            {
-                                "provider": provider_name,
-                                "provider_id": pid,
-                                "models": models,
-                            }
-                        )
+                        # Apply the same prefix transform to extras so /model
+                        # autocomplete sees consistent IDs across the two lists.
+                        extras = _apply_provider_prefix(extra_models, pid, active_provider) if extra_models else []
+                        group_entry = {
+                            "provider": provider_name + truncated_label_suffix,
+                            "provider_id": pid,
+                            "models": models,
+                        }
+                        if extras:
+                            group_entry["extra_models"] = extras
+                        groups.append(group_entry)
                 elif pid in _PROVIDER_MODELS or pid in cfg.get("providers", {}):
                     raw_models = copy.deepcopy(_PROVIDER_MODELS.get(pid, []))
                     detected_models = auto_detected_models_by_provider.get(pid, [])

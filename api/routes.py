@@ -4416,6 +4416,23 @@ def _handle_live_models(handler, parsed):
         if not ids:
             return _finish({"provider": provider, "models": [], "count": 0})
 
+        # For Nous Portal, apply the same featured-set cap that
+        # /api/models uses so background enrichment via _fetchLiveModels()
+        # doesn't undo the dropdown trim — otherwise a 397-model catalog
+        # would still flood the picker after the initial render finished
+        # the cap. The full list is returned via the main /api/models
+        # endpoint's extra_models field for /model autocomplete; the live
+        # endpoint is purely a dropdown-enrichment surface, so it should
+        # match the dropdown's visibility budget. (#1567)
+        if provider == "nous":
+            try:
+                from api.config import _build_nous_featured_set
+                _default_model = (cfg.get("model", {}) or {}).get("model") if isinstance(cfg.get("model"), dict) else None
+                _featured, _ = _build_nous_featured_set(ids, selected_model_id=_default_model)
+                ids = _featured
+            except Exception:
+                logger.debug("Failed to apply Nous featured-set cap for /api/models/live")
+
         # Normalise to {id, label} — provider_model_ids() returns plain string IDs.
         # For ollama-cloud use the shared Ollama formatter (handles `:variant` suffix).
         # For all other providers use a simpler hyphen-split capitaliser.

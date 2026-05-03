@@ -370,6 +370,17 @@ async function populateModelDropdown(){
         og.appendChild(opt);
         _dynamicModelLabels[m.id]=m.label;
       }
+      // Hydrate the label map from extra_models too (the catalog tail that
+      // doesn't render as <option> entries when the picker is capped — see
+      // _build_nous_featured_set in api/config.py for the rationale). This
+      // keeps a model selected from the slash-command autocomplete or a
+      // persisted-localStorage value renderable with its proper label
+      // instead of falling back to the bare ID. #1567.
+      if(Array.isArray(g.extra_models)){
+        for(const m of g.extra_models){
+          if(m && m.id) _dynamicModelLabels[m.id]=m.label||m.id;
+        }
+      }
       sel.appendChild(og);
     }
     // Set default model from server if no localStorage preference

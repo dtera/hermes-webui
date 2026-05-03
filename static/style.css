@@ -2416,6 +2416,16 @@ main.main.showing-profiles > #mainProfiles{display:flex;}
   line-height:1.5;
   user-select:all;
 }
+/* "+N more" disclosure pill — appended when a provider's catalog is trimmed
+   for UI scannability (#1567 — Nous Portal large-tier accounts ship 100s of
+   models). Visually distinct from a real model tag so users don't think it's
+   a model id; muted dashed border, italic, no user-select. */
+.provider-card-model-tag-more{
+  font-style:italic;
+  border-style:dashed;
+  user-select:none;
+  cursor:help;
+}
 
 /* ── Session pin indicator (inline, only when pinned) ── */
 .session-pin-indicator{

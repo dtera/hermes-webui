@@ -392,10 +392,19 @@ def get_providers() -> dict[str, Any]:
                     pass
 
         models = list(_PROVIDER_MODELS.get(pid, []))
+        models_total = len(models)
         # Nous Portal: prefer the live catalog so the providers card matches
         # the dropdown picker (#1538). Same fallback shape as the static-only
         # case below — when hermes_cli is unavailable or its lookup raises,
         # we keep the four-entry curated list.
+        #
+        # On large-tier accounts (#1567 reporter Deor saw 396 entries), we
+        # render the same featured subset the picker uses so the providers
+        # card body doesn't become a 396-pill wall. The full count is still
+        # reported via models_total — surfaced in the header line as
+        # "396 models · OAuth" by static/panels.js — so the user knows the
+        # complete catalog is reachable (via /model autocomplete or a future
+        # "show all" disclosure if added).
         if pid == "nous":
             try:
                 from hermes_cli.models import provider_model_ids as _provider_model_ids
@@ -403,12 +412,14 @@ def get_providers() -> dict[str, Any]:
                 live_ids = _provider_model_ids("nous") or []
                 if live_ids:
                     # Lazy-import to avoid circular dep with api.config.
-                    from api.config import _format_nous_label
+                    from api.config import _format_nous_label, _build_nous_featured_set
 
+                    featured_ids, _extras = _build_nous_featured_set(live_ids)
                     models = [
                         {"id": f"@nous:{mid}", "label": _format_nous_label(mid)}
-                        for mid in live_ids
+                        for mid in featured_ids
                     ]
+                    models_total = len(live_ids)
             except Exception:
                 logger.debug("Failed to load Nous Portal models from hermes_cli")
         # Also include models from config.yaml providers section
@@ -420,6 +431,13 @@ def get_providers() -> dict[str, Any]:
                     models = models + [{"id": k, "label": k} for k in cfg_models.keys()]
                 elif isinstance(cfg_models, list):
                     models = models + [{"id": k, "label": k} for k in cfg_models]
+                # Recompute models_total when config.yaml contributes additional
+                # entries on top of the live/static catalog. For non-Nous
+                # providers models_total still equals len(models); for Nous
+                # we keep the live count (which already includes any models
+                # surfaced in the curated featured slice).
+                if pid != "nous":
+                    models_total = len(models)
 
         providers.append({
             "id": pid,
@@ -430,6 +448,14 @@ def get_providers() -> dict[str, Any]:
             "key_source": key_source,
             "auth_error": auth_error,
             "models": models,
+            # models_total reflects the complete catalog size (e.g. 396 for
+            # an enterprise Nous Portal account), even when "models" is
+            # trimmed to a featured subset for UI scannability. The frontend
+            # uses this for the header text "396 models · OAuth" so users
+            # know the full catalog exists and is reachable via the slash
+            # command. For providers that don't trim, models_total ==
+            # len(models) and the frontend behaves identically to before.
+            "models_total": models_total,
         })
 
     # Scan custom_providers from config.yaml (e.g. glmcode, timicc)

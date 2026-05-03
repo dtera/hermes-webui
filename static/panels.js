@@ -3233,7 +3233,13 @@ function _buildProviderCard(p){
   // Use the is_oauth flag from the backend — it reflects _OAUTH_PROVIDERS in providers.py.
   // key_source can be 'oauth' (hermes auth), 'config_yaml' (token in config.yaml), or 'none'.
   const isOauth=p.is_oauth===true;
-  const modelCount=Array.isArray(p.models)?p.models.length:0;
+  // models_total reflects the complete catalog (e.g. 396 for a large-tier
+  // Nous Portal account). The "models" array may be trimmed to a featured
+  // subset for UI scannability — fall back to its length only when the
+  // server didn't supply models_total (older builds, custom providers).
+  const modelCount=Number.isFinite(p.models_total)
+    ? p.models_total
+    : (Array.isArray(p.models) ? p.models.length : 0);
   const sourceLabel=p.key_source==='oauth'
     ? t('providers_status_oauth')
     : p.key_source==='config_yaml'
@@ -3334,11 +3340,27 @@ function _buildProviderCard(p){
     modelSection.appendChild(modelLabel);
     const modelList=document.createElement('div');
     modelList.className='provider-card-model-tags';
-    for(const m of p.models){
+    const renderedModels=Array.isArray(p.models)?p.models:[];
+    for(const m of renderedModels){
       const tag=document.createElement('span');
       tag.className='provider-card-model-tag';
       tag.textContent=m.id||m.label||m;
       modelList.appendChild(tag);
+    }
+    // When the rendered list is a strict subset of the total catalog (Nous
+    // Portal large-tier accounts hit this with ~400-model catalogs), show
+    // a "+N more" trailing pill so the user knows the picker is intentionally
+    // capped — and they can still reach the full catalog via the /model
+    // slash command (its autocomplete consumes the un-trimmed list from
+    // /api/models's extra_models field). #1567.
+    const totalCount=Number.isFinite(p.models_total)?p.models_total:renderedModels.length;
+    const hiddenCount=Math.max(0, totalCount - renderedModels.length);
+    if(hiddenCount>0){
+      const more=document.createElement('span');
+      more.className='provider-card-model-tag provider-card-model-tag-more';
+      more.textContent='+'+hiddenCount+' more';
+      more.title='The /model slash command can autocomplete every model in this provider\'s catalog.';
+      modelList.appendChild(more);
     }
     modelSection.appendChild(modelList);
     body.appendChild(modelSection);

@@ -136,6 +136,15 @@ async function _loadSlashModelSubArgs(force=false){
           const id=_normalizeSlashSubArg(model&&model.id);
           if(id) values.push(id);
         }
+        // Include extra_models (the catalog tail that doesn't render as
+        // <option> entries when the picker is capped) so /model autocomplete
+        // covers the full catalog. The trimming is purely a dropdown
+        // scannability concern — the slash command exists precisely so
+        // power users can reach any model by typing its name. #1567.
+        for(const model of (group&&group.extra_models)||[]){
+          const id=_normalizeSlashSubArg(model&&model.id);
+          if(id) values.push(id);
+        }
       }
       const deduped=Array.from(new Set(values)).sort((a,b)=>a.localeCompare(b));
       _slashModelCache=deduped;
