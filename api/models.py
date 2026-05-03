@@ -432,11 +432,29 @@ class Session:
                 incoming_msg_count = len(self.messages or [])
                 if existing_msg_count > incoming_msg_count:
                     bak_path = self.path.with_suffix('.json.bak')
+                    # SHOULD-FIX #2 (Opus): atomic write via tmp+replace,
+                    # mirroring the main save() pattern below. Prevents a
+                    # torn .bak from a crash mid-write or a concurrent
+                    # backup-producing save. Recovery defends against a
+                    # torn .bak (JSONDecodeError → no_action), so the
+                    # failure mode pre-fix was "backup is lost"; with
+                    # this fix the backup either lands cleanly or doesn't
+                    # land at all.
                     try:
-                        bak_path.write_text(existing_text, encoding='utf-8')
+                        bak_tmp = bak_path.with_suffix(
+                            f'.bak.tmp.{os.getpid()}.{threading.current_thread().ident}'
+                        )
+                        with open(bak_tmp, 'w', encoding='utf-8') as bf:
+                            bf.write(existing_text)
+                            bf.flush()
+                            os.fsync(bf.fileno())
+                        os.replace(bak_tmp, bak_path)
                     except OSError:
                         # Backup is best-effort; main save proceeds regardless.
-                        pass
+                        try:
+                            bak_tmp.unlink(missing_ok=True)
+                        except Exception:
+                            pass
         except OSError:
             pass
 

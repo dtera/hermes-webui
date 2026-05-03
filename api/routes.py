@@ -346,6 +346,10 @@ def _clear_stale_stream_state(session) -> bool:
     # full session before touching persisted state. The original
     # metadata-only object is left untouched so the caller's read path is
     # unaffected.
+    original_stub = session  # SHOULD-FIX #1 (Opus): keep reference so we can
+                             # patch the caller's in-memory copy after a
+                             # successful clear, avoiding one ghost SSE
+                             # reconnect on the very next /api/session GET.
     if getattr(session, "_loaded_metadata_only", False):
         try:
             from api.models import get_session as _get_session
@@ -366,6 +370,20 @@ def _clear_stale_stream_state(session) -> bool:
         # The full-load path may have already repaired stale pending fields
         # via _repair_stale_pending(); only re-assert if still set.
         if not getattr(session, "active_stream_id", None):
+            # Patch the caller's stub so its read path also sees the cleared
+            # field (matches the Opus SHOULD-FIX #1 — without this, /api/session
+            # would briefly return the stale active_stream_id and the frontend
+            # would attempt one ghost SSE reconnect before recovering).
+            try:
+                original_stub.active_stream_id = None
+                if hasattr(original_stub, "pending_user_message"):
+                    original_stub.pending_user_message = None
+                if hasattr(original_stub, "pending_attachments"):
+                    original_stub.pending_attachments = []
+                if hasattr(original_stub, "pending_started_at"):
+                    original_stub.pending_started_at = None
+            except Exception:
+                pass
             return False
 
     # ── #1533 race fix: acquire the per-session lock and re-read
@@ -389,6 +407,19 @@ def _clear_stale_stream_state(session) -> bool:
                 "_clear_stale_stream_state: save() failed for session %s",
                 getattr(session, "session_id", "?"),
             )
+    # Patch the caller's stub (if different from the full-load object) so
+    # its in-memory active_stream_id matches what just got persisted.
+    if original_stub is not session:
+        try:
+            original_stub.active_stream_id = None
+            if hasattr(original_stub, "pending_user_message"):
+                original_stub.pending_user_message = None
+            if hasattr(original_stub, "pending_attachments"):
+                original_stub.pending_attachments = []
+            if hasattr(original_stub, "pending_started_at"):
+                original_stub.pending_started_at = None
+        except Exception:
+            pass
     return True
 
 # ── CSRF: validate Origin/Referer on POST ────────────────────────────────────
