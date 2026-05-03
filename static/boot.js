@@ -3,7 +3,7 @@ async function cancelStream(){
   if(!streamId) return;
   try{
     await fetch(new URL(`api/chat/cancel?stream_id=${encodeURIComponent(streamId)}`,document.baseURI||location.href).href,{credentials:'include'});
-  }catch(e){/* cancel request failed — cleanup below still runs */}
+  }catch(e){/* cancel request failed - cleanup below still runs */}
   // Clear status unconditionally after the cancel request completes.
   // The SSE cancel event may also fire, but if the connection is already
   // closed it won't arrive — so we handle cleanup here as the guaranteed path.
@@ -11,6 +11,35 @@ async function cancelStream(){
   setBusy(false);
   if(typeof setComposerStatus==='function') setComposerStatus('');
   else setStatus('');
+}
+
+async function cancelSessionStream(session){
+  const streamId = session&&session.active_stream_id;
+  const sid = session&&session.session_id;
+  if(!streamId||!sid) return;
+  try{
+    await fetch(new URL(`api/chat/cancel?stream_id=${encodeURIComponent(streamId)}`,document.baseURI||location.href).href,{credentials:'include'});
+  }catch(e){/* cancel request failed - cleanup below still runs */}
+  session.active_stream_id=null;
+  delete INFLIGHT[sid];
+  clearInflightState(sid);
+  if(S.session&&S.session.session_id===sid){
+    S.activeStreamId=null;
+    if(S.session) S.session.active_stream_id=null;
+    clearInflight();
+    setBusy(false);
+    if(typeof setComposerStatus==='function') setComposerStatus('');
+    else setStatus('');
+  }
+  if(typeof _approvalSessionId!=='undefined' && _approvalSessionId===sid){
+    stopApprovalPolling();
+    hideApprovalCard(true);
+  }
+  if(typeof _clarifySessionId!=='undefined' && _clarifySessionId===sid){
+    stopClarifyPolling();
+    hideClarifyCard(true, 'cancelled');
+  }
+  if(typeof renderSessionList==='function') renderSessionList();
 }
 
 // ── Mobile navigation ──────────────────────────────────────────────────────

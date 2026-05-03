@@ -1697,8 +1697,8 @@ body.resizing{user-select:none;cursor:col-resize;}
 .tool-card.open .tool-card-detail{max-height:600px;opacity:1;padding:var(--space-2) var(--space-3);border-top-color:var(--border-subtle);overflow:auto;}
 .tool-card-args{margin-bottom:6px;}
 .tool-card-args div{font-size:var(--font-size-xs);line-height:1.6;}
-.tool-arg-key{color:var(--blue);font-family:'SF Mono',ui-monospace,monospace;font-size:var(--font-size-xs);}
-.tool-arg-val{color:var(--muted);font-family:'SF Mono',ui-monospace,monospace;font-size:var(--font-size-xs);word-break:break-all;}
+.tool-arg-key{color:var(--blue);font-family:'SF Mono',ui-monospace,monospace;font-size:var(--font-size-xs);display:block;margin-bottom:2px;}
+.tool-arg-val{color:var(--muted);font-family:'SF Mono',ui-monospace,monospace;font-size:var(--font-size-xs);white-space:pre-wrap;word-break:break-word;display:block;overflow-x:auto;}
 .tool-card-result pre{font-size:var(--font-size-xs);color:var(--muted);font-family:'SF Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow-y:auto;margin:0;line-height:1.55;}
 
 /* ── Manual compression cards (transient transcript-local feedback) ── */

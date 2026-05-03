@@ -1,5 +1,6 @@
 // ── Session action icons (SVG, monochrome, inherit currentColor) ──
 const ICONS={
+  stop:'<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg>',
   pin:'<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,5.8 14.5,6.2 11,9.4 12,14 8,11.5 4,14 5,9.4 1.5,6.2 6.2,5.8"/></svg>',
   unpin:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><polygon points="8,2 9.8,6.2 14.2,6.2 10.7,9.2 12,13.8 8,11 4,13.8 5.3,9.2 1.8,6.2 6.2,6.2"/></svg>',
   folder:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4.5h4l1.5 1.5H14v7H2z"/></svg>',
@@ -942,6 +943,18 @@ function _openSessionActionMenu(session, anchorEl){
       }catch(err){showToast(t('session_duplicate_failed')+err.message);}
     }
   ));
+  if(session.active_stream_id){
+    menu.appendChild(_buildSessionAction(
+      t('session_stop_response'),
+      t('session_stop_response_desc'),
+      ICONS.stop,
+      async()=>{
+        closeSessionActionMenu();
+        await cancelSessionStream(session);
+        showToast(t('stream_stopped'));
+      }
+    ));
+  }
   menu.appendChild(_buildSessionAction(
     t('session_delete'),
     t('session_delete_desc'),
