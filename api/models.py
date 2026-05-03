@@ -366,6 +366,23 @@ class Session:
         return SESSION_DIR / f'{self.session_id}.json'
 
     def save(self, touch_updated_at: bool = True, skip_index: bool = False) -> None:
+        # ── #1558 P0 guard ──────────────────────────────────────────────
+        # Refuse to save a session that was loaded with metadata_only=True.
+        # Such sessions have messages=[] (it's the whole point of the partial
+        # load), and save() unconditionally writes self.messages to disk via
+        # an atomic os.replace(). Saving a metadata-only stub thus wipes the
+        # full conversation history — which is exactly the v0.50.279
+        # _clear_stale_stream_state() regression that lost users 1000+
+        # message conversations. Any caller that needs to mutate persisted
+        # fields on a metadata-only session must reload with
+        # metadata_only=False first.
+        if getattr(self, '_loaded_metadata_only', False):
+            raise RuntimeError(
+                f"Refusing to save metadata-only session {self.session_id!r}: "
+                f"would atomically overwrite on-disk messages with []. "
+                f"Reload with metadata_only=False before mutating state. "
+                f"See #1558."
+            )
         if touch_updated_at:
             self.updated_at = time.time()
         # Write metadata fields first so load_metadata_only() can read them
@@ -391,6 +408,56 @@ class Session:
                  if k not in METADATA_FIELDS and k not in ('messages', 'tool_calls')
                  and not k.startswith('_')}
         payload = json.dumps({**meta, **extra}, ensure_ascii=False, indent=2)
+
+        # ── #1558 backup safeguard ──────────────────────────────────────
+        # Before overwriting the session file, copy the previous version to
+        # ``<sid>.json.bak`` IFF the previous file has more messages than the
+        # incoming payload. The asymmetric guard means:
+        #   * Normal grow-the-conversation saves never produce a backup
+        #     (incoming messages >= existing) — keeps disk overhead near zero.
+        #   * Any save that would shrink the messages array (the failure mode
+        #     of #1558, plus anything similar in the future) leaves a recoverable
+        #     snapshot of the pre-shrink state on disk.
+        # The recovery path is api/session_recovery.py — at server startup and
+        # via /api/session/recover, sessions whose JSON has fewer messages than
+        # their .bak get restored automatically.
+        try:
+            if self.path.exists():
+                existing_text = self.path.read_text(encoding='utf-8')
+                try:
+                    existing = json.loads(existing_text)
+                    existing_msg_count = len(existing.get('messages') or [])
+                except (json.JSONDecodeError, ValueError):
+                    existing_msg_count = -1  # corrupt → always back up
+                incoming_msg_count = len(self.messages or [])
+                if existing_msg_count > incoming_msg_count:
+                    bak_path = self.path.with_suffix('.json.bak')
+                    # SHOULD-FIX #2 (Opus): atomic write via tmp+replace,
+                    # mirroring the main save() pattern below. Prevents a
+                    # torn .bak from a crash mid-write or a concurrent
+                    # backup-producing save. Recovery defends against a
+                    # torn .bak (JSONDecodeError → no_action), so the
+                    # failure mode pre-fix was "backup is lost"; with
+                    # this fix the backup either lands cleanly or doesn't
+                    # land at all.
+                    try:
+                        bak_tmp = bak_path.with_suffix(
+                            f'.bak.tmp.{os.getpid()}.{threading.current_thread().ident}'
+                        )
+                        with open(bak_tmp, 'w', encoding='utf-8') as bf:
+                            bf.write(existing_text)
+                            bf.flush()
+                            os.fsync(bf.fileno())
+                        os.replace(bak_tmp, bak_path)
+                    except OSError:
+                        # Backup is best-effort; main save proceeds regardless.
+                        try:
+                            bak_tmp.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+        except OSError:
+            pass
+
         tmp = self.path.with_suffix(f'.tmp.{os.getpid()}.{threading.current_thread().ident}')
         try:
             with open(tmp, 'w', encoding='utf-8') as f:
@@ -443,6 +510,13 @@ class Session:
             parsed['tool_calls'] = []
             session = cls(**parsed)
             session._metadata_message_count = _lookup_index_message_count(sid)
+            # Mark this session as a metadata-only stub. save() refuses to write
+            # such a session because doing so would atomically replace the
+            # on-disk JSON with messages=[], wiping the conversation. Any
+            # caller that needs to mutate persisted state on a metadata-only
+            # session must reload it with metadata_only=False first.
+            # See #1558 — v0.50.279 _clear_stale_stream_state() data-loss bug.
+            session._loaded_metadata_only = True
             return session
         except Exception:
             # Corrupt prefix or decode error — fall back to full load

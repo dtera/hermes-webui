@@ -327,6 +327,12 @@ def _clear_stale_stream_state(session) -> bool:
     A server restart or worker crash can leave active_stream_id/pending_* in the
     session JSON while STREAMS is empty. The frontend then keeps reconnecting to
     a dead stream and shows a permanent running/thinking state.
+
+    SAFETY (#1558): If ``session`` was loaded with ``metadata_only=True``, its
+    ``messages`` array is empty by design and calling ``save()`` would
+    atomically overwrite the on-disk JSON, wiping the conversation. In that
+    case we re-load the full session before mutating, so the persisted
+    write carries the real messages forward.
     """
     stream_id = getattr(session, "active_stream_id", None)
     if not stream_id:
@@ -335,17 +341,85 @@ def _clear_stale_stream_state(session) -> bool:
         stream_alive = stream_id in STREAMS
     if stream_alive:
         return False
-    session.active_stream_id = None
-    if hasattr(session, "pending_user_message"):
-        session.pending_user_message = None
-    if hasattr(session, "pending_attachments"):
-        session.pending_attachments = []
-    if hasattr(session, "pending_started_at"):
-        session.pending_started_at = None
-    try:
-        session.save()
-    except Exception:
-        pass
+
+    # ── #1558 P0 safety: if we were handed a metadata-only stub, reload the
+    # full session before touching persisted state. The original
+    # metadata-only object is left untouched so the caller's read path is
+    # unaffected.
+    original_stub = session  # SHOULD-FIX #1 (Opus): keep reference so we can
+                             # patch the caller's in-memory copy after a
+                             # successful clear, avoiding one ghost SSE
+                             # reconnect on the very next /api/session GET.
+    if getattr(session, "_loaded_metadata_only", False):
+        try:
+            from api.models import get_session as _get_session
+            session = _get_session(session.session_id, metadata_only=False)
+        except Exception:
+            # If we cannot upgrade to a full load (file gone, decode error,
+            # etc.) bail without clearing — better to leave a stale
+            # active_stream_id than to wipe the conversation.
+            logger.warning(
+                "_clear_stale_stream_state: refused to clear stale stream %s "
+                "for session %s — full reload failed and we will not save a "
+                "metadata-only stub. See #1558.",
+                stream_id, getattr(session, "session_id", "?"),
+            )
+            return False
+        if session is None:
+            return False
+        # The full-load path may have already repaired stale pending fields
+        # via _repair_stale_pending(); only re-assert if still set.
+        if not getattr(session, "active_stream_id", None):
+            # Patch the caller's stub so its read path also sees the cleared
+            # field (matches the Opus SHOULD-FIX #1 — without this, /api/session
+            # would briefly return the stale active_stream_id and the frontend
+            # would attempt one ghost SSE reconnect before recovering).
+            try:
+                original_stub.active_stream_id = None
+                if hasattr(original_stub, "pending_user_message"):
+                    original_stub.pending_user_message = None
+                if hasattr(original_stub, "pending_attachments"):
+                    original_stub.pending_attachments = []
+                if hasattr(original_stub, "pending_started_at"):
+                    original_stub.pending_started_at = None
+            except Exception:
+                pass
+            return False
+
+    # ── #1533 race fix: acquire the per-session lock and re-read
+    # active_stream_id under it. A concurrent chat_start may have already
+    # registered a new stream after our STREAMS_LOCK check above; in that
+    # case we must NOT clobber its session.active_stream_id.
+    with _get_session_agent_lock(session.session_id):
+        if getattr(session, "active_stream_id", None) != stream_id:
+            return False
+        session.active_stream_id = None
+        if hasattr(session, "pending_user_message"):
+            session.pending_user_message = None
+        if hasattr(session, "pending_attachments"):
+            session.pending_attachments = []
+        if hasattr(session, "pending_started_at"):
+            session.pending_started_at = None
+        try:
+            session.save()
+        except Exception:
+            logger.exception(
+                "_clear_stale_stream_state: save() failed for session %s",
+                getattr(session, "session_id", "?"),
+            )
+    # Patch the caller's stub (if different from the full-load object) so
+    # its in-memory active_stream_id matches what just got persisted.
+    if original_stub is not session:
+        try:
+            original_stub.active_stream_id = None
+            if hasattr(original_stub, "pending_user_message"):
+                original_stub.pending_user_message = None
+            if hasattr(original_stub, "pending_attachments"):
+                original_stub.pending_attachments = []
+            if hasattr(original_stub, "pending_started_at"):
+                original_stub.pending_started_at = None
+        except Exception:
+            pass
     return True
 
 # ── CSRF: validate Origin/Referer on POST ────────────────────────────────────

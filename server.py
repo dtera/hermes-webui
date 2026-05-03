@@ -110,6 +110,19 @@ def main() -> None:
     # Fix sensitive file permissions before doing anything else
     fix_credential_permissions()
 
+    # ── #1558 startup self-heal ─────────────────────────────────────────
+    # If a previous process wrote a session JSON with fewer messages than
+    # its .bak (the data-loss shape #1558 produced), restore from the .bak.
+    # Safe to run unconditionally — a clean install is a no-op.
+    try:
+        from api.session_recovery import recover_all_sessions_on_startup
+        result = recover_all_sessions_on_startup(SESSION_DIR)
+        if result.get("restored"):
+            print(f"[recovery] Restored {result['restored']}/{result['scanned']} sessions from .bak (see #1558).", flush=True)
+    except Exception as exc:
+        # Recovery is best-effort; never block server startup.
+        print(f"[recovery] startup recovery failed: {exc}", flush=True)
+
     within_container = False
     # Check for the "/.within_container" file to determine if we're running inside a container; this file is created in the Dockerfile
     try:
