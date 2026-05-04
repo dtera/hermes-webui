@@ -1168,15 +1168,17 @@ def _deduplicate_model_ids(groups: list[dict]) -> None:
 #      Reuses the same private-IP detection logic used elsewhere in
 #      api/config.py for SSRF host trust.
 _LOCAL_SERVER_PROVIDERS = {
-    "lmstudio",   # canonical (in hermes_cli.models.CANONICAL_PROVIDERS)
-    "ollama",     # via custom_providers, common pattern
-    "llamacpp",   # via custom_providers
-    "llama-cpp",  # alias
-    "vllm",       # via custom_providers
-    "tabby",      # via custom_providers (TabbyAPI)
-    "tabbyapi",   # alias
-    "koboldcpp",  # local llama.cpp UI fork
-    "textgen",    # text-generation-webui (oobabooga) OpenAI-compat extension
+    "lmstudio",     # canonical (in hermes_cli.models.CANONICAL_PROVIDERS)
+    "lm-studio",    # alias used in some custom_providers configs (#1625 Opus NIT)
+    "ollama",       # via custom_providers, common pattern
+    "llamacpp",     # via custom_providers
+    "llama-cpp",    # alias
+    "vllm",         # via custom_providers
+    "tabby",        # via custom_providers (TabbyAPI)
+    "tabbyapi",     # alias
+    "koboldcpp",    # local llama.cpp UI fork
+    "textgen",      # text-generation-webui (oobabooga) OpenAI-compat extension
+    "localai",      # LocalAI project (#1625 Opus NIT)
 }
 
 

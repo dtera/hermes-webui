@@ -33,12 +33,16 @@ def _patch_cfg(monkeypatch, **model_overrides):
 
 @pytest.mark.parametrize("provider_name", [
     "lmstudio",
+    "lm-studio",   # Opus pre-release NIT
     "ollama",
     "llamacpp",
     "llama-cpp",
     "vllm",
     "tabby",
     "tabbyapi",
+    "koboldcpp",
+    "textgen",
+    "localai",     # Opus pre-release NIT
 ])
 def test_known_local_server_provider_preserves_full_model_id(provider_name, monkeypatch):
     """Known local-server provider names must preserve the slashed model id

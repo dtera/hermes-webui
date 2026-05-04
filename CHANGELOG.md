@@ -10,6 +10,8 @@
 
 - **Local model servers (LM Studio, Ollama, llama.cpp, vLLM, TabbyAPI) now keep their full HuggingFace-style model id** (closes #1625, reported by @akarichan8231) — `resolve_model_provider()` in `api/config.py:1149` stripped the provider prefix from a model id like `qwen/qwen3.6-27b` whenever (a) the model contained `/`, (b) `config.yaml` had `model.base_url` set, and (c) the prefix matched a known entry in `_PROVIDER_MODELS` (e.g. `qwen`, `openai`, `anthropic`, etc.). The strip is correct for OpenAI-compatible **proxies** (LiteLLM, OpenRouter relays) — `openai/gpt-5.4` → `gpt-5.4`. But local model servers are **not** proxies — they register models under their full HuggingFace path as the registry key. Stripping the prefix made LM Studio (or Ollama, llama.cpp, vLLM, TabbyAPI) miss the loaded model and silently load a brand-new instance with default settings, ignoring the user's tuned 131072 context / 4 parallel slots. **Fix:** new `_LOCAL_SERVER_PROVIDERS` set covering canonical names (`lmstudio`, `ollama`, `llamacpp`, `llama-cpp`, `vllm`, `tabby`, `tabbyapi`, `koboldcpp`, `textgen`) and a new `_base_url_points_at_local_server()` heuristic that catches `provider: custom` + `base_url: http://localhost:1234/v1` setups too (via loopback / RFC1918 / IPv6-loopback IP detection). Either signal triggers no-strip. Backward compat is preserved for OpenAI-compatible proxies on public hosts (LiteLLM at `https://litellm.example.com/v1` continues to strip `openai/gpt-5.4` → `gpt-5.4`).
 
+  > **Behavior change for internal-network OpenAI-compatible proxies (RFC1918):** the loopback heuristic also matches private-IP base_urls (10/8, 172.16/12, 192.168/16). A team running an internal LiteLLM proxy at `http://10.5.0.1:1234/v1` now gets prefix preservation instead of stripping. LiteLLM accepts either form, so this is invisible in practice; users with a custom proxy on RFC1918 that requires the stripped form should configure it as a `custom_providers:` entry, which routes through the early `custom_providers` loop and never reaches the local-server detection.
+
 ### Tests
 
 4180 → **4226 passing** (+46 regression tests across `tests/test_issue1623_sse_heartbeat_alignment.py` (3), `tests/test_issue1624_repair_stale_pending_grace.py` (9), `tests/test_issue1625_local_server_model_id_preservation.py` (34)). 0 regressions. Full suite in ~120s.
@@ -20,6 +22,13 @@
 - `_SSE_HEARTBEAT_INTERVAL_SECONDS × 2 ≤ KEEPIDLE + KEEPINTVL × KEEPCNT` pinned by a regression test that derives the kernel window from `server.py` setsockopt block at runtime.
 - `_repair_stale_pending` grace guard exercised at: 5s-old turn (skip), grace-1s-old turn (skip), grace+30s-old turn (fire), missing/zero/garbage `pending_started_at` (fire — legacy compat), no pending-message (skip — pre-existing contract), live stream (skip — pre-existing contract).
 - `resolve_model_provider` exercised across 7 known local-server provider names + 7 loopback/private IP heuristic cases + backward-compat checks for OpenAI-compatible proxies on public hosts and OpenRouter pass-through. Helper `_base_url_points_at_local_server()` independently unit-tested against 11 url shapes.
+
+
+
+### Opus-applied fixes (absorbed in-PR per release policy)
+
+- **SHOULD-FIX (`_repair_stale_pending` log volume)**: rate-limit the repair-firing telemetry by age — `logger.warning` for the diagnostically valuable race window (< 5 min, actual leak-path candidates that slipped past the grace guard) and `logger.debug` for the long-tail (orphaned sidecars from prior process lifetimes). Prevents reconnect loops on stuck sessions from flooding the log while preserving the diagnostic signal we want for tuning the grace constant.
+- **NIT (`_LOCAL_SERVER_PROVIDERS`)**: added `lm-studio` (hyphenated alias used in some `custom_providers:` configs and already recognized at `api/config.py:2189` for SSRF host trust) and `localai` (LocalAI project, common OpenAI-compatible local server). Test parametrize expanded to cover the new names plus pre-existing `koboldcpp` and `textgen` for symmetry.
 
 ## [v0.50.293] — 2026-05-04
 

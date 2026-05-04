@@ -794,13 +794,17 @@ def _repair_stale_pending(session) -> bool:
             )
             return False
         try:
-            # Telemetry (#1624): log every legitimate repair so the next batch
+            # Telemetry (#1624): log legitimate repair firings so the next batch
             # of user reports tells us whether the underlying race still fires
-            # post-fix. Particularly useful for short-window repairs that slip
-            # past the grace guard (e.g. age just over the threshold) so we
-            # can tune _REPAIR_STALE_PENDING_GRACE_SECONDS empirically.
+            # post-fix. Rate-limit by age (Opus pre-release SHOULD-FIX): WARNING
+            # for the diagnostically valuable race window (< 5 min — actual
+            # leak-path candidates that slipped past the grace guard) and DEBUG
+            # for the long-tail (orphaned sidecars from prior process lifetimes)
+            # so reconnect loops on stuck sessions don't flood the log.
+            _DIAG_WARN_WINDOW_SECONDS = 300  # 5 min
             _age_str = ('inf' if _age == float('inf') else f'{_age:.1f}s')
-            logger.warning(
+            _log = logger.warning if _age < _DIAG_WARN_WINDOW_SECONDS else logger.debug
+            _log(
                 "_repair_stale_pending firing: session=%s stream_id=%s pending_age=%s",
                 sid, _seen_stream_id, _age_str,
             )
