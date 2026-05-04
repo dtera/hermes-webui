@@ -53,6 +53,55 @@ _MESSAGING_SESSION_METADATA_LOCK = threading.Lock()
 _STALE_MESSAGING_END_REASONS = {"session_reset", "session_switch"}
 
 
+# ── Profile-scoped session/project filtering (#1611, #1614) ────────────────
+#
+# Sessions and projects are stored in the WebUI sidecar without per-row
+# isolation by default — they're tagged with a `profile` field but every
+# query saw all rows. The fix scopes both endpoints to the active profile
+# by default, with `?all_profiles=1` opting into aggregate mode.
+#
+# Renamed-root profile handling (#1612): a row tagged `profile='default'`
+# matches the active root regardless of the root's display name, and a row
+# tagged with the renamed-root display name (e.g. 'kinni') likewise matches
+# when the active profile is `'default'`. _is_root_profile() is the
+# canonical check.
+
+def _profiles_match(row_profile, active_profile) -> bool:
+    """Return True if a session/project row's profile matches the active profile.
+
+    Treats both the literal alias 'default' and any renamed-root display name
+    (per _is_root_profile) as equivalent, so legacy rows tagged 'default'
+    still surface when the user has renamed the root profile to e.g. 'kinni',
+    and vice versa.
+
+    A row with no profile (`None` or empty string) is treated as belonging to
+    the root profile — that's the convention used by the legacy backfill at
+    api/models.py::all_sessions, and matches the default seen in
+    `static/sessions.js` (`S.activeProfile||'default'`).
+    """
+    from api.profiles import _is_root_profile
+
+    row = row_profile or 'default'
+    active = active_profile or 'default'
+    if row == active:
+        return True
+    # Cross-alias the renamed root.
+    if _is_root_profile(row) and _is_root_profile(active):
+        return True
+    return False
+
+
+def _all_profiles_query_flag(parsed_url) -> bool:
+    """Return True if the request URL has `?all_profiles=1` (or true/yes).
+
+    Centralizes the opt-in parsing so /api/sessions and /api/projects use
+    the same shape. Accepts 1/true/yes (case-insensitive) for ergonomics.
+    """
+    qs = parse_qs(parsed_url.query)
+    raw = qs.get('all_profiles', [''])[0].strip().lower()
+    return raw in ('1', 'true', 'yes', 'on')
+
+
 def _normalize_messaging_source(raw_source) -> str:
     return str(raw_source or "").strip().lower()
 
@@ -2002,8 +2051,24 @@ def handle_get(handler, parsed) -> bool:
             reverse=True,
         )
         merged = _keep_latest_messaging_session_per_source(merged)
+        # ── Profile scoping (#1611) ────────────────────────────────────────
+        # Default: filter to the active profile. ?all_profiles=1 opts into
+        # the aggregate view used by the "All profiles" sidebar toggle.
+        # The other_profile_count is always returned so the UI can render
+        # the "Show N from other profiles" affordance without sending the
+        # cross-profile rows by default.
+        from api.profiles import get_active_profile_name
+        active_profile = get_active_profile_name()
+        all_profiles = _all_profiles_query_flag(parsed)
+        if all_profiles:
+            scoped = merged
+            other_profile_count = 0
+        else:
+            scoped = [s for s in merged
+                      if _profiles_match(s.get("profile"), active_profile)]
+            other_profile_count = len(merged) - len(scoped)
         safe_merged = []
-        for s in merged:
+        for s in scoped:
             item = dict(s)
             if isinstance(item.get("title"), str):
                 item["title"] = _redact_text(item["title"])
@@ -2011,12 +2076,32 @@ def handle_get(handler, parsed) -> bool:
         return j(handler, {
             "sessions": safe_merged,
             "cli_count": len(deduped_cli),
+            "all_profiles": all_profiles,
+            "active_profile": active_profile,
+            "other_profile_count": other_profile_count,
             "server_time": time.time(),
             "server_tz": time.strftime("%z"),
         })
 
     if parsed.path == "/api/projects":
-        return j(handler, {"projects": load_projects()})
+        # ── Profile scoping (#1614) ────────────────────────────────────────
+        # Default: filter to the active profile. ?all_profiles=1 returns the
+        # aggregate list so settings/admin UIs can still see everything.
+        from api.profiles import get_active_profile_name
+        active_profile = get_active_profile_name()
+        all_projects = load_projects()
+        all_profiles = _all_profiles_query_flag(parsed)
+        if all_profiles:
+            scoped = all_projects
+        else:
+            scoped = [p for p in all_projects
+                      if _profiles_match(p.get("profile"), active_profile)]
+        return j(handler, {
+            "projects": scoped,
+            "all_profiles": all_profiles,
+            "active_profile": active_profile,
+            "other_profile_count": len(all_projects) - len(scoped),
+        })
 
     if parsed.path == "/api/session/export":
         return _handle_session_export(handler, parsed)
@@ -3325,8 +3410,21 @@ def handle_post(handler, parsed) -> bool:
             s = get_session(body["session_id"])
         except KeyError:
             return bad(handler, "Session not found", 404)
+        # #1614: refuse moves into a project owned by another profile.
+        target_pid = body.get("project_id") or None
+        if target_pid:
+            from api.profiles import get_active_profile_name
+            active_profile = get_active_profile_name()
+            target = next(
+                (p for p in load_projects() if p["project_id"] == target_pid),
+                None,
+            )
+            if not target:
+                return bad(handler, "Project not found", 404)
+            if not _profiles_match(target.get("profile"), active_profile):
+                return bad(handler, "Project not found", 404)
         with _get_session_agent_lock(body["session_id"]):
-            s.project_id = body.get("project_id") or None
+            s.project_id = target_pid
             s.save()
         return j(handler, {"ok": True, "session": s.compact()})
 
@@ -3337,6 +3435,7 @@ def handle_post(handler, parsed) -> bool:
         except ValueError as e:
             return bad(handler, str(e))
         import re as _re
+        from api.profiles import get_active_profile_name
 
         name = body["name"].strip()[:128]
         if not name:
@@ -3349,6 +3448,7 @@ def handle_post(handler, parsed) -> bool:
             "project_id": uuid.uuid4().hex[:12],
             "name": name,
             "color": color,
+            "profile": get_active_profile_name() or 'default',
             "created_at": time.time(),
         }
         projects.append(proj)
@@ -3361,12 +3461,17 @@ def handle_post(handler, parsed) -> bool:
         except ValueError as e:
             return bad(handler, str(e))
         import re as _re
+        from api.profiles import get_active_profile_name
 
         projects = load_projects()
         proj = next(
             (p for p in projects if p["project_id"] == body["project_id"]), None
         )
         if not proj:
+            return bad(handler, "Project not found", 404)
+        # #1614: a project can only be renamed by the profile that owns it.
+        active_profile = get_active_profile_name()
+        if not _profiles_match(proj.get("profile"), active_profile):
             return bad(handler, "Project not found", 404)
         proj["name"] = body["name"].strip()[:128]
         if "color" in body:
@@ -3382,11 +3487,16 @@ def handle_post(handler, parsed) -> bool:
             require(body, "project_id")
         except ValueError as e:
             return bad(handler, str(e))
+        from api.profiles import get_active_profile_name
         projects = load_projects()
         proj = next(
             (p for p in projects if p["project_id"] == body["project_id"]), None
         )
         if not proj:
+            return bad(handler, "Project not found", 404)
+        # #1614: a project can only be deleted by the profile that owns it.
+        active_profile = get_active_profile_name()
+        if not _profiles_match(proj.get("profile"), active_profile):
             return bad(handler, "Project not found", 404)
         projects = [p for p in projects if p["project_id"] != body["project_id"]]
         save_projects(projects)
