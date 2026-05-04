@@ -1164,6 +1164,17 @@ def _find_current_user_turn(messages, msg_text):
     return fallback
 
 
+def _drop_checkpointed_current_user_from_context(messages, msg_text):
+    """Return model history without an eager-checkpointed current user turn."""
+    history = list(messages or [])
+    if not history:
+        return history
+    current_user_key = _message_identity({'role': 'user', 'content': msg_text})
+    if current_user_key and _message_identity(history[-1]) == current_user_key:
+        return history[:-1]
+    return history
+
+
 def _merge_display_messages_after_agent_result(previous_display, previous_context, result_messages, msg_text):
     """Keep UI transcript durable while allowing model context to compact.
 
@@ -1191,8 +1202,20 @@ def _merge_display_messages_after_agent_result(previous_display, previous_contex
 
     merged = previous_display[:]
     seen = {_message_identity(m) for m in merged}
+    current_user_key = _message_identity({'role': 'user', 'content': msg_text})
     for msg in candidates:
         key = _message_identity(msg)
+        if (
+            key is not None
+            and key == current_user_key
+            and merged
+            and _message_identity(merged[-1]) == key
+        ):
+            # Eager session-save mode can checkpoint the current user turn
+            # before the agent runs. When the agent returns that same user turn
+            # in result_messages, keep the durable checkpoint and append only
+            # the assistant/tool delta.
+            continue
         if _is_context_compression_marker(msg) and key is not None and key in seen:
             continue
         merged.append(copy.deepcopy(msg))
@@ -2059,7 +2082,10 @@ def _run_agent_streaming(
             # Truthy-check covers None, missing-attr, and 0 uniformly.
             _turn_started_at = _pending_started_at if _pending_started_at else time.time()
             _previous_messages = list(s.messages or [])
-            _previous_context_messages = list(_session_context_messages(s))
+            _previous_context_messages = _drop_checkpointed_current_user_from_context(
+                _session_context_messages(s),
+                msg_text,
+            )
             _pre_compression_count = getattr(
                 getattr(agent, 'context_compressor', None),
                 'compression_count', 0,
