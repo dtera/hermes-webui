@@ -101,6 +101,20 @@ def _all_profiles_query_flag(parsed_url) -> bool:
     raw = qs.get('all_profiles', [''])[0].strip().lower()
     return raw in ('1', 'true', 'yes', 'on')
 
+# ── SSE app-level heartbeat (#1623) ────────────────────────────────────────
+#
+# Kernel TCP keepalive (server.py setsockopt block) declares a peer dead at
+# KEEPIDLE (10s) + KEEPINTVL (5s) * KEEPCNT (3) = 25s in the worst case. The
+# app-level SSE heartbeat must fire well below that window so flaky-network
+# probes never get the chance to kill an idle stream during long LLM thinking
+# phases. 5s gives the kernel ~5x headroom: probe at 10s, heartbeat byte at
+# every 5s of idle keeps the socket warm.
+#
+# Cost: ~12 bytes per heartbeat * 12 extra heartbeats/min = ~150B/min idle.
+# Trivial; many production SSE deployments run 5-15s heartbeats specifically
+# to handle proxies and mobile NAT.
+_SSE_HEARTBEAT_INTERVAL_SECONDS = 5
+
 
 def _normalize_messaging_source(raw_source) -> str:
     return str(raw_source or "").strip().lower()
@@ -3778,7 +3792,7 @@ def _handle_sse_stream(handler, parsed):
     try:
         while True:
             try:
-                event, data = subscriber.get(timeout=30)
+                event, data = subscriber.get(timeout=_SSE_HEARTBEAT_INTERVAL_SECONDS)
             except queue.Empty:
                 handler.wfile.write(b": heartbeat\n\n")
                 handler.wfile.flush()
@@ -3901,7 +3915,7 @@ def _handle_terminal_output(handler, parsed):
     try:
         while True:
             try:
-                event, data = term.output.get(timeout=25)
+                event, data = term.output.get(timeout=_SSE_HEARTBEAT_INTERVAL_SECONDS)
             except queue.Empty:
                 handler.wfile.write(b": terminal heartbeat\n\n")
                 handler.wfile.flush()
@@ -3986,7 +4000,7 @@ def _handle_gateway_sse_stream(handler, parsed):
 
         while True:
             try:
-                event_data = q.get(timeout=30)
+                event_data = q.get(timeout=_SSE_HEARTBEAT_INTERVAL_SECONDS)
             except queue.Empty:
                 handler.wfile.write(b': keepalive\n\n')
                 handler.wfile.flush()
@@ -4309,7 +4323,7 @@ def _handle_approval_sse_stream(handler, parsed):
     try:
         while True:
             try:
-                payload = q.get(timeout=30)
+                payload = q.get(timeout=_SSE_HEARTBEAT_INTERVAL_SECONDS)
             except queue.Empty:
                 # Keepalive — SSE comment line prevents proxy/CDN timeout.
                 handler.wfile.write(b': keepalive\n\n')
@@ -4410,7 +4424,7 @@ def _handle_clarify_sse_stream(handler, parsed):
     try:
         while True:
             try:
-                payload = q.get(timeout=30)
+                payload = q.get(timeout=_SSE_HEARTBEAT_INTERVAL_SECONDS)
             except queue.Empty:
                 handler.wfile.write(b': keepalive\n\n')
                 handler.wfile.flush()

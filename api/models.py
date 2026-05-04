@@ -713,11 +713,32 @@ def _apply_core_sync_or_error_marker(
     return True
 
 
+# ── _repair_stale_pending grace period (#1624) ─────────────────────────────
+#
+# Defense-in-depth against a narrow race between the streaming thread clearing
+# pending_user_message and STREAMS.pop(stream_id). Without this guard, any
+# fast turn (e.g. command approval) that exits the thread before the on-disk
+# pending clear has flushed gets misdiagnosed as a crashed turn, producing a
+# spurious "Previous turn did not complete." marker.
+#
+# 30s covers the worst-case post-loop persistence window: LLM finishing a tool
+# batch + lock contention with the checkpoint thread + a multi-MB session.save.
+# A legitimately crashed turn whose pending_started_at is < 30s old will not
+# repair on the first get_session() call, but WILL repair on the next call
+# after the grace period elapses (typically the user's next interaction).
+#
+# Missing/falsy pending_started_at (legacy sidecars from before that field
+# existed, or any path that forgot to set it) is treated as "old enough" so
+# repair still recovers them — preserves current behavior for legacy data.
+_REPAIR_STALE_PENDING_GRACE_SECONDS = 30
+
+
 def _repair_stale_pending(session) -> bool:
     """Recover a sidecar stuck with messages=[] and stale pending state.
 
     Fires only when messages is empty, pending_user_message is set,
-    active_stream_id is set, and the stream is no longer alive.
+    active_stream_id is set, the stream is no longer alive, AND the turn is
+    older than _REPAIR_STALE_PENDING_GRACE_SECONDS (#1624).
 
     Uses a non-blocking lock acquire so a caller that already holds the
     per-session lock (e.g. retry_last, undo_last, cancel_stream) cannot
@@ -734,6 +755,26 @@ def _repair_stale_pending(session) -> bool:
             or not _seen_stream_id
             or _seen_stream_id in _active_stream_ids()):
         return False
+
+    # Grace-period guard: bail if the turn is too fresh to be a real crash.
+    # Falsy pending_started_at (None, 0, missing) means "old enough" — preserve
+    # legacy-data recovery semantics for sessions that pre-date the field.
+    _started = getattr(session, 'pending_started_at', None)
+    if _started:
+        try:
+            _age = time.time() - float(_started)
+        except (TypeError, ValueError):
+            _age = float('inf')
+        if _age < _REPAIR_STALE_PENDING_GRACE_SECONDS:
+            logger.debug(
+                "_repair_stale_pending: skipping repair for session %s — "
+                "pending_started_at age=%.1fs < %ds grace window",
+                session.session_id, _age, _REPAIR_STALE_PENDING_GRACE_SECONDS,
+            )
+            return False
+    else:
+        # Treat missing/falsy pending_started_at as "old enough" (legacy data).
+        _age = float('inf')
 
     sid = session.session_id
     if not sid or not all(c in '0123456789abcdefghijklmnopqrstuvwxyz_' for c in sid):
@@ -753,6 +794,20 @@ def _repair_stale_pending(session) -> bool:
             )
             return False
         try:
+            # Telemetry (#1624): log legitimate repair firings so the next batch
+            # of user reports tells us whether the underlying race still fires
+            # post-fix. Rate-limit by age (Opus pre-release SHOULD-FIX): WARNING
+            # for the diagnostically valuable race window (< 5 min — actual
+            # leak-path candidates that slipped past the grace guard) and DEBUG
+            # for the long-tail (orphaned sidecars from prior process lifetimes)
+            # so reconnect loops on stuck sessions don't flood the log.
+            _DIAG_WARN_WINDOW_SECONDS = 300  # 5 min
+            _age_str = ('inf' if _age == float('inf') else f'{_age:.1f}s')
+            _log = logger.warning if _age < _DIAG_WARN_WINDOW_SECONDS else logger.debug
+            _log(
+                "_repair_stale_pending firing: session=%s stream_id=%s pending_age=%s",
+                sid, _seen_stream_id, _age_str,
+            )
             return _apply_core_sync_or_error_marker(
                 session, core_path, stream_id_for_recheck=_seen_stream_id,
             )
