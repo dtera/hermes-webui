@@ -932,7 +932,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
         // No-reply guard (#373): if agent returned nothing, show inline error
         if(!S.messages.some(m=>m.role==='assistant'&&String(m.content||'').trim())&&!assistantText){removeThinking();S.messages.push({role:'assistant',content:'**No response received.** Check your API key and model selection.'});}
         if(isSessionViewed) _markSessionViewed(completedSid, completedSession.message_count ?? S.messages.length);
-        syncTopbar();renderMessages();loadDir('.');
+        syncTopbar();renderMessages({preserveScroll:true});loadDir('.');
         // TTS auto-read: speak the last assistant response if enabled (#499)
         if(typeof autoReadLastAssistant==='function') setTimeout(()=>autoReadLastAssistant(), 300);
       }
@@ -1038,7 +1038,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
           S.messages.push({role:'assistant',content:'**Error:** An error occurred. Check server logs.'});
         }
         _markSessionViewed(activeSid, S.messages.length);
-        renderMessages();
+        renderMessages({preserveScroll:true});
       }else if(typeof trackBackgroundError==='function'){
         const _errTitle=(typeof _allSessions!=='undefined'&&_allSessions.find(s=>s.session_id===activeSid)||{}).title||null;
         try{const d=JSON.parse(e.data);trackBackgroundError(activeSid,_errTitle,d.message||'Error');}
@@ -1113,13 +1113,13 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
             S.messages=(data.session.messages||[]).filter(m=>m&&m.role);
             clearLiveToolCards();if(!assistantText)removeThinking();
             _markSessionViewed(activeSid, data.session.message_count ?? S.messages.length);
-            renderMessages();
+            renderMessages({preserveScroll:true});
           }
         }catch(_){
           // Fallback to local cancel message if API fails
           if(S.session&&S.session.session_id===activeSid){
             clearLiveToolCards();if(!assistantText)removeThinking();
-            S.messages.push({role:'assistant',content:'*Task cancelled.*'});renderMessages();
+            S.messages.push({role:'assistant',content:'*Task cancelled.*'});renderMessages({preserveScroll:true});
             _markSessionViewed(activeSid, S.messages.length);
           }
         }
@@ -1169,7 +1169,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
           S.toolCalls=[];
         }
         if(isSessionViewed) _markSessionViewed(completedSid, session.message_count ?? S.messages.length);
-        syncTopbar();renderMessages();
+        syncTopbar();renderMessages({preserveScroll:true});
       }
       _queueDrainSid=activeSid;renderSessionList();setBusy(false);setComposerStatus('');
       return true;
@@ -1192,7 +1192,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
     if(S.session&&S.session.session_id===activeSid){
       S.activeStreamId=null;
       clearLiveToolCards();if(!assistantText)removeThinking();
-      S.messages.push({role:'assistant',content:'**Error:** Connection lost'});renderMessages();
+      S.messages.push({role:'assistant',content:'**Error:** Connection lost'});renderMessages({preserveScroll:true});
       _markSessionViewed(activeSid, S.messages.length);
     }else{
       if(typeof trackBackgroundError==='function'){
@@ -1223,7 +1223,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
             removeThinking();
             _queueDrainSid=activeSid;setBusy(false);
             setComposerStatus('');
-            renderMessages();
+            renderMessages({preserveScroll:true});
             renderSessionList();
           }
           return;
@@ -1980,7 +1980,7 @@ function startBackgroundPolling(parentSid, taskId, prompt){
             delete _bgPollTimers[taskId];
             const msg={role:'assistant',content:`**${t('bg_label')}** ${prompt.slice(0,80)}\n\n${res.answer||t('bg_no_answer')}`,'_background':true,_ts:Date.now()/1000};
             S.messages.push(msg);
-            renderMessages();
+            renderMessages({preserveScroll:true});
             showToast(t('bg_complete'));
             return;
           }

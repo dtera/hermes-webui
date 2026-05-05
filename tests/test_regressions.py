@@ -436,11 +436,12 @@ def test_done_handler_sets_busy_false_before_renderMessages(cleanup_test_session
     stream_end_idx = src.find("source.addEventListener('stream_end'", done_idx)
     assert stream_end_idx >= 0, "stream_end listener after done handler not found"
     done_block = src[done_idx:stream_end_idx]
-    # S.busy=false must appear before renderMessages() within the done handler
+    # S.busy=false must appear before the terminal render call within the done handler.
     busy_pos = done_block.find("S.busy=false;")
-    render_pos = done_block.find("renderMessages()")
+    render_pos = done_block.find("renderMessages(")
     assert busy_pos >= 0, "done handler must set S.busy=false before renderMessages()"
-    assert busy_pos < render_pos,         f"S.busy=false (pos {busy_pos}) must come before renderMessages() (pos {render_pos})"
+    assert render_pos >= 0, "done handler must call renderMessages after settling state"
+    assert busy_pos < render_pos,         f"S.busy=false (pos {busy_pos}) must come before renderMessages (pos {render_pos})"
 
 
 # ── R14: send() uses stale modelSelect.value instead of session model ────────
