@@ -5701,7 +5701,11 @@ function _renderTreeItems(container, entries, depth){
 
     // Name
     const nameEl=document.createElement('span');
-    nameEl.className='file-name';nameEl.textContent=item.name;nameEl.title=t('double_click_rename');
+    nameEl.className='file-name';nameEl.textContent=item.name;
+    // Tooltip only on FILES — dblclick renames them. On directories, dblclick
+    // navigates into the folder; rename lives in the right-click context menu
+    // (the "Double-click to rename" hint here would be misleading). #1710.
+    if(item.type!=='dir')nameEl.title=t('double_click_rename');
     // Single-click opens (file) or expand-toggles (dir) but is debounced 300ms so a
     // double-click can cancel it and trigger rename instead. Without the debounce, the
     // click bubbles to el.onclick before dblclick can fire — that's #1698. Without the
