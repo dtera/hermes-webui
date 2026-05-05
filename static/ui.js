@@ -5702,9 +5702,23 @@ function _renderTreeItems(container, entries, depth){
     // Name
     const nameEl=document.createElement('span');
     nameEl.className='file-name';nameEl.textContent=item.name;nameEl.title=t('double_click_rename');
-    nameEl.onclick=(e)=>e.stopPropagation();
+    // Single-click opens (file) or expand-toggles (dir) but is debounced 300ms so a
+    // double-click can cancel it and trigger rename instead. Without the debounce, the
+    // click bubbles to el.onclick before dblclick can fire — that's #1698. Without the
+    // restored activation, single-click on the filename does nothing — that's #1707.
+    let _nameClickTimer=null;
+    nameEl.onclick=(e)=>{
+      e.stopPropagation();
+      if(_nameClickTimer){clearTimeout(_nameClickTimer);_nameClickTimer=null;}
+      _nameClickTimer=setTimeout(()=>{
+        _nameClickTimer=null;
+        // Delegate to the row's existing single-click handler (openFile / dir toggle).
+        if(typeof el.onclick==='function')el.onclick(e);
+      },300);
+    };
     nameEl.ondblclick=(e)=>{
       e.stopPropagation();
+      if(_nameClickTimer){clearTimeout(_nameClickTimer);_nameClickTimer=null;}
       // For directories, double-click navigates (breadcrumb view)
       if(item.type==='dir'){loadDir(item.path);return;}
       const inp=document.createElement('input');

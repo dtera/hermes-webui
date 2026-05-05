@@ -1,5 +1,11 @@
 # Hermes Web UI -- Changelog
 
+## [v0.51.5] — 2026-05-05 — single-PR hotfix (#1707)
+
+### Fixed
+
+- **#1707 — single-click on workspace tree filename does nothing.** `static/ui.js` `_renderTreeItems` had `nameEl.onclick=(e)=>e.stopPropagation();` (introduced in #1702 to fix #1698 — clicking the filename was hijacking the dblclick rename handler). Pure stopPropagation swallowed the click entirely, so the row's `el.onclick=async()=>openFile(...)` never fired and clicking the filename did nothing. Fix: replace the pure-barrier with a 300ms-debounced delegator. Single-click on `nameEl` schedules a setTimeout that calls `el.onclick(e)` after the dblclick threshold passes; double-click cancels the pending timer and triggers the existing rename input. Cost: 300ms latency on file-open clicks (acceptable — matches OS dblclick threshold). Also updated `tests/test_workspace_tree_rename.py` to accept both the pre-#1707 (pure stopPropagation) and post-#1707 (debounced delegator) shapes — the original assertion was too narrow. 9 new regression tests in `tests/test_1707_workspace_filename_click.py` (6 source-level + 3 behavioral via Node VM); 7 of 9 fail on master pre-fix, all 9 pass after.
+
 ## [v0.51.4] — 2026-05-05 — 10-PR full-sweep batch
 
 ### Added
