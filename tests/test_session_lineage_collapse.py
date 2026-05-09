@@ -304,6 +304,8 @@ def test_lineage_segment_expansion_static_contract():
     assert "_expandedLineageKeys.delete(lineageKey)" in js
     assert "className='session-lineage-segments'" in js
     assert "className='session-lineage-segment'" in js
+    assert "const segTitle=seg.title||t('session_lineage_segment_untitled');" in js
+    assert "row.title=t('session_lineage_segment_open');" in js
     assert "await loadSession(seg.session_id);" in js
     assert ".session-lineage-count.expandable{" in css
     assert ".session-lineage-count.expandable:hover" in css
@@ -347,6 +349,13 @@ console.log(JSON.stringify({{lineage:[..._expandedLineageKeys], child:[..._expan
     assert json.loads(_run_node(source)) == {"lineage": ["root"], "child": []}
 
 
-def test_session_meta_segments_locale_key_is_defined_for_sidebar_locales():
+def test_lineage_segment_locale_keys_are_defined_for_sidebar_locales():
     i18n = (REPO_ROOT / "static" / "i18n.js").read_text(encoding="utf-8")
-    assert i18n.count("session_meta_segments:") >= i18n.count("session_meta_messages:")
+    required = [
+        "session_meta_segments:",
+        "session_lineage_segment_untitled:",
+        "session_lineage_segment_open:",
+    ]
+    locale_count = i18n.count("session_meta_messages:")
+    for key in required:
+        assert i18n.count(key) >= locale_count, f"{key} missing from one or more locale blocks"

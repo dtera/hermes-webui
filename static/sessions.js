@@ -2523,10 +2523,10 @@ function renderSessionListFromCache(){
         const row=document.createElement('button');
         row.type='button';
         row.className='session-lineage-segment'+(activeSidForSidebar&&seg.session_id===activeSidForSidebar?' active':'');
-        const segTitle=seg.title||'Untitled segment';
+        const segTitle=seg.title||t('session_lineage_segment_untitled');
         const segTime=_formatRelativeSessionTime(_sessionTimestampMs(seg));
         row.textContent=`-> ${segTitle} - ${segTime}`;
-        row.title='Open lineage segment';
+        row.title=t('session_lineage_segment_open');
         row.onclick=async(e)=>{
           e.stopPropagation();
           if(seg.is_cli_session){
