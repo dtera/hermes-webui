@@ -11,6 +11,15 @@ COMPACT_PANELS = re.sub(r"\s+", "", PANELS)
 COMPACT_STYLE = re.sub(r"\s+", "", STYLE)
 
 
+def _locale_blocks_with_body(i18n_text: str):
+    locale_blocks = re.findall(
+        r"\n\s*(?:'(?P<quoted>[a-z]{2}(?:-[A-Z][A-Za-z]+)?)'|(?P<plain>[a-z]{2}(?:-[A-Z]{2})?))\s*:\s*\{(.*?)\n\s*\},",
+        i18n_text,
+        flags=re.S,
+    )
+    return [(quoted or plain, body) for quoted, plain, body in locale_blocks]
+
+
 def test_kanban_has_native_sidebar_rail_and_mobile_tab():
     assert 'data-panel="kanban"' in INDEX
     assert 'data-i18n-title="tab_kanban"' in INDEX
@@ -532,8 +541,8 @@ def test_kanban_main_view_scrolls_when_task_preview_is_tall():
 
 
 def test_kanban_i18n_keys_exist_in_every_locale_block():
-    locale_blocks = re.findall(r"\n\s*([a-z]{2}(?:-[A-Z]{2})?): \{(.*?)\n\s*\},", I18N, flags=re.S)
-    assert len(locale_blocks) >= 8
+    locale_blocks = _locale_blocks_with_body(I18N)
+    assert len(locale_blocks) >= 9
     required_keys = [
         "tab_kanban",
         "kanban_board",
@@ -563,6 +572,38 @@ def test_kanban_i18n_keys_exist_in_every_locale_block():
         if re.search(rf"\b{re.escape(key)}\s*:", body) is None
     ]
     assert missing == []
+
+
+def test_kanban_modal_locale_parity():
+    """Parity check for modal-facing Kanban i18n keys.
+
+    Any locale that already contains modal-facing Kanban strings should include the
+    same set of modal vocabulary so new additions don't regress into locale gaps.
+    """
+    locale_blocks = _locale_blocks_with_body(I18N)
+    modal_keys = [
+        "kanban_title",
+        "kanban_description",
+        "kanban_description_placeholder",
+        "kanban_status",
+        "kanban_assignee",
+        "kanban_assignee_placeholder",
+        "kanban_tenant",
+        "kanban_tenant_placeholder",
+        "kanban_priority",
+        "kanban_priority_hint",
+        "kanban_title_required",
+    ]
+    anchor_key = "kanban_status"
+    missing = [
+        f"{locale}:{key}"
+        for locale, body in locale_blocks
+        if re.search(rf"\b{re.escape(anchor_key)}\s*:", body) is not None
+        for key in modal_keys
+        if re.search(rf"\b{re.escape(key)}\s*:", body) is None
+    ]
+    assert missing == []
+
 
 
 
@@ -597,7 +638,7 @@ def test_kanban_dashboard_parity_core_controls_are_native():
 
 
 def test_kanban_dashboard_parity_i18n_keys_exist():
-    locale_blocks = re.findall(r"\n\s*([a-z]{2}(?:-[A-Z]{2})?): \{(.*?)\n\s*\},", I18N, flags=re.S)
+    locale_blocks = _locale_blocks_with_body(I18N)
     required_keys = [
         "kanban_only_mine",
         "kanban_bulk_action",
@@ -668,7 +709,7 @@ def test_kanban_ui_parity_polish_css_and_i18n_exist():
         ".hermes-kanban-md",
     ):
         assert selector in STYLE
-    locale_blocks = re.findall(r"\n\s*([a-z]{2}(?:-[A-Z]{2})?): \{(.*?)\n\s*\},", I18N, flags=re.S)
+    locale_blocks = _locale_blocks_with_body(I18N)
     required_keys = ["kanban_lanes_by_profile", "kanban_card_complete", "kanban_card_archive", "kanban_unassigned", "kanban_work_queue_hint"]
     missing = [
         f"{locale}:{key}"
