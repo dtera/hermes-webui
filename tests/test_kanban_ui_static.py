@@ -257,6 +257,10 @@ def test_kanban_edit_mode_preserves_status_when_dropdown_untouched():
         "Edit-mode status preservation requires tracking the initial displayed "
         "status so submit can detect whether the user actually changed it."
     )
+    assert 'id="kanbanTaskModalStatusOriginalHint"' in INDEX
+    assert "_kanbanSetTaskModalStatusHint" in PANELS
+    assert "kanban_status_original_hint" in I18N
+    assert ".kanban-status-original-hint" in STYLE
 
     # 2. openKanbanEdit captures the initial displayed status from the task.
     open_edit_match = re.search(
@@ -268,6 +272,8 @@ def test_kanban_edit_mode_preserves_status_when_dropdown_untouched():
         "openKanbanEdit must record the initial displayed status."
     )
     assert "_kanbanEditableStatusFor(task.status)" in open_edit_body
+    assert "_kanbanSetTaskModalStatusHint(originalStatus, initialDisplayedStatus)" in open_edit_body
+    assert "const originalStatus = task.status || initialDisplayedStatus" in open_edit_body
 
     # 3. Submit's edit branch only sends status when it differs from the
     #    initial displayed value.
@@ -292,6 +298,7 @@ def test_kanban_edit_mode_preserves_status_when_dropdown_untouched():
         "openKanbanCreate must reset the tracker to null so create-mode "
         "submits always include status in the POST payload."
     )
+    assert "_kanbanSetTaskModalStatusHint(null);" in create_body
 
     # 5. closeKanbanTaskModal clears the tracker so a stale value can't leak
     #    into the next open.
@@ -301,6 +308,60 @@ def test_kanban_edit_mode_preserves_status_when_dropdown_untouched():
     assert close_match
     close_body = close_match.group(1)
     assert "_kanbanTaskModalInitialDisplayedStatus = null" in close_body
+    assert "_kanbanSetTaskModalStatusHint(null, null);" in close_body
+
+
+def test_kanban_modal_focus_trap_helper_exists():
+    """Shared focus-trap helper should exist and attach/remove Tab key handling."""
+    assert "function _trapModalFocus" in PANELS
+    fn = re.search(r"function _trapModalFocus\([^)]*\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert fn, "_trapModalFocus() not found"
+    fn_body = fn.group(1)
+    assert "addEventListener('keydown'" in fn_body
+    assert "removeEventListener('keydown'" in fn_body
+    assert "ev.key !== 'Tab'" in fn_body or "ev.key === 'Tab'" in fn_body
+
+
+def test_kanban_task_modal_focus_trap_is_installed_and_removed():
+    """Task modal open calls should install focus trap and close should tear it down."""
+    create_match = re.search(r"function openKanbanCreate\(\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert create_match, "openKanbanCreate() not found"
+    create_body = create_match.group(1)
+    assert "_kanbanTaskModalFocusCleanup = _trapModalFocus(modal);" in create_body
+    assert "if (_kanbanTaskModalFocusCleanup) {" in create_body
+
+    edit_match = re.search(r"async function openKanbanEdit\([^)]*\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert edit_match, "openKanbanEdit() not found"
+    edit_body = edit_match.group(1)
+    assert "_kanbanTaskModalFocusCleanup = _trapModalFocus(modal);" in edit_body
+    assert "if (_kanbanTaskModalFocusCleanup) {" in edit_body
+
+    close_match = re.search(r"function closeKanbanTaskModal\(\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert close_match, "closeKanbanTaskModal() not found"
+    close_body = close_match.group(1)
+    assert "if (_kanbanTaskModalFocusCleanup) {" in close_body
+    assert "_kanbanTaskModalFocusCleanup = null;" in close_body
+
+
+def test_kanban_board_modal_focus_trap_is_installed_and_removed():
+    """Board modal open calls should install focus trap and close should tear it down."""
+    create_board_match = re.search(r"function openKanbanCreateBoard\(\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert create_board_match, "openKanbanCreateBoard() not found"
+    create_board_body = create_board_match.group(1)
+    assert "_kanbanBoardModalFocusCleanup = _trapModalFocus(modal);" in create_board_body
+    assert "if (_kanbanBoardModalFocusCleanup) {" in create_board_body
+
+    rename_board_match = re.search(r"function openKanbanRenameBoard\(\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert rename_board_match, "openKanbanRenameBoard() not found"
+    rename_board_body = rename_board_match.group(1)
+    assert "_kanbanBoardModalFocusCleanup = _trapModalFocus(modal);" in rename_board_body
+    assert "if (_kanbanBoardModalFocusCleanup) {" in rename_board_body
+
+    close_board_match = re.search(r"function closeKanbanBoardModal\(\)\{(.*?)\n\}", PANELS, re.DOTALL)
+    assert close_board_match, "closeKanbanBoardModal() not found"
+    close_board_body = close_board_match.group(1)
+    assert "if (_kanbanBoardModalFocusCleanup) {" in close_board_body
+    assert "_kanbanBoardModalFocusCleanup = null;" in close_board_body
 
 
 def test_kanban_assignee_dropdown_uses_select_not_freetext():
