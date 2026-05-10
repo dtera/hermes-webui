@@ -2420,6 +2420,17 @@ function renderSessionListFromCache(){
     list.dataset.sessionVirtualActiveAnchor!==activeSidForSidebar||
     list.dataset.sessionVirtualFilter!==q
   );
+  const virtualWindowBeforeActiveAnchor=_sessionVirtualWindow({
+    total:flatSessionRows.length,
+    scrollTop:listScrollTopBeforeRender,
+    viewportHeight:list.clientHeight||520,
+    itemHeight:SESSION_VIRTUAL_ROW_HEIGHT,
+    buffer:SESSION_VIRTUAL_BUFFER_ROWS,
+    threshold:SESSION_VIRTUAL_THRESHOLD_ROWS,
+    activeIndex:-1,
+  });
+  const activeWasAlreadyVisible=activeIndex>=virtualWindowBeforeActiveAnchor.start&&activeIndex<virtualWindowBeforeActiveAnchor.end;
+  const shouldMoveSidebarToActive=shouldAnchorActive&&!activeWasAlreadyVisible;
   let virtualWindow=_sessionVirtualWindow({
     total:flatSessionRows.length,
     scrollTop:listScrollTopBeforeRender,
@@ -2427,10 +2438,10 @@ function renderSessionListFromCache(){
     itemHeight:SESSION_VIRTUAL_ROW_HEIGHT,
     buffer:SESSION_VIRTUAL_BUFFER_ROWS,
     threshold:SESSION_VIRTUAL_THRESHOLD_ROWS,
-    activeIndex:shouldAnchorActive?activeIndex:-1,
+    activeIndex:shouldMoveSidebarToActive?activeIndex:-1,
   });
   let virtualAnchorScrollTop=null;
-  if(shouldAnchorActive&&virtualWindow.virtualized){
+  if(shouldMoveSidebarToActive&&virtualWindow.virtualized){
     list.dataset.sessionVirtualActiveAnchor=activeSidForSidebar;
     virtualAnchorScrollTop=virtualWindow.topPad;
   }else if(activeSidForSidebar){
