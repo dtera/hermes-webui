@@ -877,9 +877,31 @@ def _title_retry_completion_budget(provider: str = '', model: str = '', base_url
 
 
 def _title_retry_status(status: str) -> bool:
+    # Whether to grant a second budget attempt within the same prompt+model
+    # combination.  ``llm_length`` indicates the model would have produced
+    # content with more headroom, so doubling the budget can help.
+    #
+    # ``llm_empty_reasoning`` historically also triggered a retry, but for
+    # reasoning models (Qwen3-thinking, DeepSeek-R1, Kimi-K2, etc.) that
+    # status means the model burned its entire budget on hidden reasoning
+    # tokens and emitted nothing visible.  Doubling the budget in that case
+    # just doubles the GPU/credit cost without changing the outcome — the
+    # next attempt produces the same shape.  We skip the retry for empty-
+    # reasoning statuses and let the title path fall through to the local
+    # fallback summary.  See issue #2083 for the LM Studio + Qwen3 repro.
     return status in {
         'llm_length',
         'llm_length_aux',
+    }
+
+
+def _title_should_skip_remaining_attempts(status: str) -> bool:
+    # When a reasoning model burns its budget on hidden reasoning,
+    # additional prompts against the same model will hit the same wall.
+    # Short-circuit the prompt-iteration loop so we don't issue a second
+    # full-budget LLM call (and twice the GPU/credit burn) only to land in
+    # the same fallback path.  See issue #2083.
+    return status in {
         'llm_empty_reasoning',
         'llm_empty_reasoning_aux',
     }
@@ -922,10 +944,16 @@ def _extract_title_response(resp, *, aux: bool = False) -> tuple[str, str]:
             or _safe_text_value(_safe_obj_value(message, 'reasoning_content'))
             or _safe_text_value(_safe_obj_value(message, 'thinking'))
         )
-        if finish_reason == 'length':
-            return '', f'llm_length{suffix}'
+        # When the model emitted reasoning tokens but no visible content, it
+        # burned its budget on hidden thinking — retrying with a larger budget
+        # almost never recovers a useful title (see issue #2083: Qwen3-thinking
+        # via LM Studio loops indefinitely on auto-title generation).  Report
+        # this case distinctly so callers can short-circuit instead of double-
+        # billing the GPU/credit on a near-certain repeat.
         if reasoning:
             return '', f'llm_empty_reasoning{suffix}'
+        if finish_reason == 'length':
+            return '', f'llm_length{suffix}'
         return '', f'llm_empty{suffix}'
     except Exception:
         return '', f'llm_empty{suffix}'
@@ -978,6 +1006,11 @@ def generate_title_raw_via_aux(
             except Exception as e:
                 last_status = 'llm_error_aux'
                 logger.debug("Aux title generation attempt %s failed: %s", idx + 1, e)
+            # If the model just burned its budget on hidden reasoning, retrying
+            # the next prompt against the same model produces the same shape.
+            # Short-circuit to the local fallback path (#2083).
+            if _title_should_skip_remaining_attempts(last_status):
+                break
         return None, last_status
     except Exception as e:
         logger.debug("Aux title generation failed: %s", e)
@@ -1077,6 +1110,11 @@ def generate_title_raw_via_agent(agent, user_text: str, assistant_text: str) -> 
                     getattr(agent, 'model', None),
                     e,
                 )
+            # If the model just burned its budget on hidden reasoning, retrying
+            # the next prompt against the same model produces the same shape.
+            # Short-circuit to the local fallback path (#2083).
+            if _title_should_skip_remaining_attempts(last_status):
+                break
         return None, last_status
     except Exception as e:
         logger.debug("Agent title generation failed: %s", e)
