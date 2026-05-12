@@ -3392,6 +3392,20 @@ main.main.showing-insights > #mainInsights{display:flex;overflow-y:auto;}
 .insights-token-label{color:var(--muted);}
 .insights-token-value{font-weight:600;}
 
+/* ── Mobile layout for Token Breakdown + Models (issue #2104) ───────────── */
+@media (max-width: 640px) {
+  .insights-usage-grid {
+    grid-template-columns: 1fr;
+  }
+  .insights-usage-grid .insights-card {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .insights-model-table {
+    min-width: 320px;
+  }
+}
+
 /* ── Checkpoints / Rollback UI (#466) ─────────────────────────────────────── */
 .checkpoint-list{display:flex;flex-direction:column;gap:8px;}
 .checkpoint-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;}

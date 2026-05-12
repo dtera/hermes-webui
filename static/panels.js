@@ -3023,7 +3023,7 @@ function _renderInsights(d, box, wikiStatus) {
       ${overviewCards.map(c => `<div class="insights-stat"><div class="insights-stat-icon">${c.icon}</div><div class="insights-stat-info"><div class="insights-stat-value">${c.value}</div><div class="insights-stat-label">${esc(c.label)}</div></div></div>`).join('')}
     </div>
     ${dailyHtml}
-    <div class="insights-row">
+    <div class="insights-row insights-usage-grid">
       ${tokenCards}
       ${modelsHtml}
     </div>
