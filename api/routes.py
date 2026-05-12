@@ -6967,7 +6967,7 @@ def _handle_chat_start(handler, body, diag=None):
         attachments = _normalize_chat_attachments(body.get("attachments") or [])[:20]
         diag.stage("resolve_workspace") if diag else None
         try:
-            workspace = str(resolve_trusted_workspace(body.get("workspace") or s.workspace))
+            workspace = _resolve_chat_workspace_with_recovery(s, body.get("workspace"))
         except ValueError as e:
             return bad(handler, str(e))
         requested_model = body.get("model") or s.model
@@ -6998,6 +6998,24 @@ def _handle_chat_start(handler, body, diag=None):
         if diag:
             diag.finish()
 
+
+
+def _resolve_chat_workspace_with_recovery(s, requested_workspace) -> str:
+    """Recover stale implicit session workspaces without hiding explicit errors."""
+    explicit = requested_workspace not in (None, "")
+    candidate = requested_workspace if explicit else getattr(s, "workspace", None)
+    try:
+        return str(resolve_trusted_workspace(candidate))
+    except ValueError:
+        if explicit:
+            raise
+    fallback = str(resolve_trusted_workspace(get_last_workspace()))
+    s.workspace = fallback
+    try:
+        s.save()
+    except Exception:
+        pass
+    return fallback
 
 
 def _normalize_chat_attachments(raw_attachments):
