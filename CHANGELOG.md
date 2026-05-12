@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- **PR #2137** by @franksong2702 — The login page `/health` connectivity probe now sends same-origin credentials instead of forcing `credentials: "omit"`, so deployments protected by Cloudflare Access or another same-origin access proxy can pass their access cookie through before WebUI decides the service is reachable. This keeps the probe mount-relative and does not change WebUI password auth.
+
 - **PR #2117** by @ayushere — `ctl.sh start` no longer crashes on macOS (bash 3.2) with `preserved[@]: unbound variable`. The dotenv-preserve loop in `_load_repo_dotenv_preserving_env()` iterated `"${preserved[@]}"` under `set -euo pipefail`, which bash 4+ silently allows on empty arrays but bash 3.2 (still the default `/usr/bin/bash` on macOS) treats as an unbound-variable error. Guards the iteration with `if [[ ${#preserved[@]} -gt 0 ]]; then ... fi` — matches the canonical bash 3.2 strict-mode pattern. This is the third bash 3.2 compat fix to land in `ctl.sh` (prior: `025f137f` guarded `CTL_BOOTSTRAP_ARGS[@]` with the `${arr[@]+...}` pass-through pattern, `630981a0` replaced `[[ -v ${key} ]]` with `[[ -n "${!key+x}" ]]`). Defense-in-depth: added `tests/test_ctl_bash32_compat.py` (5 static-pattern regressions) pinning both empty-array guards plus a denylist for bash 4+ syntax (`declare -A`, `mapfile`, `[[ -v ]]`, `${var^^}`, `${var,,}`) so the next regression surfaces in CI instead of a macOS user's terminal. Stage-343 reviewer added the regression-test file alongside the contributor's 5-LOC fix to ctl.sh.
 
 ## [v0.51.49] — 2026-05-12 — Release Y (stage-342 — 3-PR contributor batch — read-only worktree status endpoint + worktree-retained response preference + Codex quota credential-pool fallback)
