@@ -6104,27 +6104,85 @@ def _handle_live_models(handler, parsed):
             ids = []
 
         if not ids:
+            custom_provider_entry = None
+
+            def _custom_provider_entries_for_request():
+                if not (provider == "custom" or provider.startswith("custom:")):
+                    return []
+                try:
+                    from api.config import _custom_provider_slug_from_name
+                    _cp_entries = cfg.get("custom_providers", [])
+                    if not isinstance(_cp_entries, list):
+                        return []
+                    _matches = []
+                    for _cp in _cp_entries:
+                        if not isinstance(_cp, dict):
+                            continue
+                        _slug = _custom_provider_slug_from_name(_cp.get("name", ""))
+                        if provider.startswith("custom:"):
+                            if _slug == provider:
+                                _matches.append(_cp)
+                        elif provider == "custom" and not _slug:
+                            _matches.append(_cp)
+                    return _matches
+                except Exception:
+                    return []
+
+            def _custom_provider_model_ids(_cp):
+                _ids = []
+
+                def _append(_mid):
+                    _mid = str(_mid or "").strip()
+                    if _mid and _mid not in _ids:
+                        _ids.append(_mid)
+
+                _append(_cp.get("model", ""))
+                _models = _cp.get("models")
+                if isinstance(_models, dict):
+                    for _mid in _models:
+                        if isinstance(_mid, str):
+                            _append(_mid)
+                elif isinstance(_models, list):
+                    for _item in _models:
+                        if isinstance(_item, str):
+                            _append(_item)
+                        elif isinstance(_item, dict):
+                            _append(_item.get("id") or _item.get("model") or _item.get("name"))
+                return _ids
+
+            def _custom_provider_api_key(_cp):
+                _raw = _cp.get("api_key")
+                if _raw is not None:
+                    _key = str(_raw).strip()
+                    if _key.startswith("${") and _key.endswith("}") and len(_key) > 3:
+                        _key = os.getenv(_key[2:-1], "").strip()
+                    if _key:
+                        return _key
+                _env = str(_cp.get("key_env") or "").strip()
+                return os.getenv(_env, "").strip() if _env else ""
+
             # For 'custom' and 'custom:*' providers, provider_model_ids()
             # returns [] because they aren't real hermes_cli endpoints.
             # Fall back to the custom_providers entries from config.yaml so
             # the live-model enrichment step can add any models that weren't
             # already in the static list (issue #1619).
             if provider == "custom" or provider.startswith("custom:"):
-                try:
-                    _cp_entries = cfg.get("custom_providers", [])
-                    if isinstance(_cp_entries, list):
-                        ids = [
-                            _cp.get("model", "")
-                            for _cp in _cp_entries
-                            if isinstance(_cp, dict) and _cp.get("model", "")
-                        ]
-                except Exception:
-                    pass
+                for _cp in _custom_provider_entries_for_request():
+                    if custom_provider_entry is None:
+                        custom_provider_entry = _cp
+                    ids.extend(_custom_provider_model_ids(_cp))
             
             # If still no ids, try fetching from base_url directly (OpenAI-compat endpoint)
             if not ids and (provider == "custom" or provider.startswith("custom:")):
-                _base_url = cfg.get("model", {}).get("base_url")
-                _api_key = cfg.get("model", {}).get("api_key")
+                _base_url = None
+                _api_key = None
+                if custom_provider_entry:
+                    _base_url = custom_provider_entry.get("base_url")
+                    _api_key = _custom_provider_api_key(custom_provider_entry)
+                else:
+                    _model_cfg = cfg.get("model", {})
+                    _base_url = _model_cfg.get("base_url")
+                    _api_key = _model_cfg.get("api_key")
                 if _base_url and _api_key:
                     try:
                         import urllib.request
