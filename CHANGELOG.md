@@ -4,6 +4,8 @@
 
 ### Added
 
+- Read-only worktree status endpoint for the #2057 lifecycle tracker. `GET /api/session/worktree/status?session_id=...` now returns the session-owned worktree path, filesystem existence, dirty/untracked state, ahead/behind counts when an upstream is configured, and live stream/embedded-terminal lock flags without mutating git state. This is the non-destructive status surface Nathan requested before any future explicit remove-worktree action.
+
 - **PR #2105** by @Michaelyklam — Hermes run adapter contract RFC at `docs/rfcs/hermes-run-adapter-contract.md` (refs #1925). 315-line spec/gap matrix that defines the event/control compatibility contract WebUI needs before browser-originated chat turns can be routed to Hermes-owned runtime execution. Documents the ownership boundary (Hermes Agent owns run creation, lifecycle, event ordering, replay, terminal state, approvals, clarify, cancellation; WebUI owns browser auth, transcript rendering, tool cards, approval/clarify widgets, workspace UX), the minimum `start_run`/`observe_run`/`get_run`/`cancel_run`/`queue_or_continue`/`respond_approval`/`respond_clarify` IPC surface, and a gap matrix mapping current `STREAMS`/`CANCEL_FLAGS`/`AGENT_INSTANCES`/callback queues to Hermes-owned targets with explicit "no private callback queue" / "no runtime surrogate" non-goals. First success criterion is restart/reattach (start a non-trivial run, restart hermes-webui, browser reconnects, replays from last cursor, cancels with Hermes-emitted terminal state) — not "basic chat streamed once." Status: Proposed.
 
 ### Fixed
