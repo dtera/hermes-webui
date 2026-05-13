@@ -1525,18 +1525,6 @@ def _lookup_cli_session_metadata(session_id: str) -> dict:
     return {}
 
 
-def _needs_cli_session_metadata(session) -> bool:
-    """Return true when /api/session should pay for Agent/CLI metadata lookup."""
-    if not session:
-        return False
-    is_cli = (
-        bool(session.get("is_cli_session"))
-        if isinstance(session, dict)
-        else bool(getattr(session, "is_cli_session", False))
-    )
-    return is_cli or _is_messaging_session_record(session)
-
-
 def _messaging_session_identity(session: dict, raw_source: str) -> str:
     metadata = _lookup_gateway_session_identity(session.get("session_id"))
     session_key = _safe_first(
@@ -1682,6 +1670,43 @@ def _messages_include_tool_metadata(messages) -> bool:
         ):
             return True
     return False
+
+
+def _session_requires_cli_metadata_lookup(session) -> bool:
+    """Return True when a sidecar/session row still needs CLI metadata.
+
+    Legacy imported sidecars may predate the ``read_only`` field and therefore
+    load with ``read_only=False``. They still persist ``is_cli_session`` and/or
+    source metadata from import time, so those markers intentionally keep them
+    on the CLI lookup path while ordinary WebUI-native sessions take the fast
+    path.
+
+    Supersedes the simpler is-cli-or-messaging gate from PR #1822 — the new
+    gate is strictly more inclusive (also covers ``read_only=True`` sidecars,
+    ``session_source`` markers, and source_tag/raw_source/platform metadata)
+    so all sessions that previously took the slow path still do, plus a few
+    more legacy shapes.
+    """
+    if not session:
+        return False
+
+    def _field(name):
+        return session.get(name) if isinstance(session, dict) else getattr(session, name, None)
+
+    if _is_messaging_session_record(session):
+        return True
+    if bool(_field("is_cli_session")) or bool(_field("read_only")):
+        return True
+    session_source = _normalize_messaging_source(_safe_first(_field("session_source")))
+    if session_source in {"messaging", "external_agent", "external-agent"}:
+        return True
+    return bool(_safe_first(
+        _field("source_tag"),
+        _field("raw_source"),
+        _field("source"),
+        _field("source_label"),
+        _field("platform"),
+    ))
 
 
 def _is_messaging_session_id(sid: str) -> bool:
@@ -3252,7 +3277,7 @@ def handle_get(handler, parsed) -> bool:
             _t1 = _time.monotonic()
             s = get_session(sid, metadata_only=(not load_messages))
             _clear_stale_stream_state(s)
-            cli_meta = _lookup_cli_session_metadata(sid) if _needs_cli_session_metadata(s) else {}
+            cli_meta = _lookup_cli_session_metadata(sid) if _session_requires_cli_metadata_lookup(s) else {}
             is_messaging_session = _is_messaging_session_record(s) or _is_messaging_session_record(cli_meta)
             cli_messages = []
             if is_messaging_session:
