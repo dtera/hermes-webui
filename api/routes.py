@@ -1430,6 +1430,18 @@ def _lookup_cli_session_metadata(session_id: str) -> dict:
     return {}
 
 
+def _needs_cli_session_metadata(session) -> bool:
+    """Return true when /api/session should pay for Agent/CLI metadata lookup."""
+    if not session:
+        return False
+    is_cli = (
+        bool(session.get("is_cli_session"))
+        if isinstance(session, dict)
+        else bool(getattr(session, "is_cli_session", False))
+    )
+    return is_cli or _is_messaging_session_record(session)
+
+
 def _messaging_session_identity(session: dict, raw_source: str) -> str:
     metadata = _lookup_gateway_session_identity(session.get("session_id"))
     session_key = _safe_first(
@@ -3125,7 +3137,7 @@ def handle_get(handler, parsed) -> bool:
             _t1 = _time.monotonic()
             s = get_session(sid, metadata_only=(not load_messages))
             _clear_stale_stream_state(s)
-            cli_meta = _lookup_cli_session_metadata(sid)
+            cli_meta = _lookup_cli_session_metadata(sid) if _needs_cli_session_metadata(s) else {}
             is_messaging_session = _is_messaging_session_record(s) or _is_messaging_session_record(cli_meta)
             cli_messages = []
             if is_messaging_session:
