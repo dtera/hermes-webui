@@ -4472,9 +4472,11 @@ function _compressionAnchorIndex(visWithIdx, anchorKey, fallbackIdx=null){
     for(let i=visWithIdx.length-1;i>=0;i--){
       const candidate=_compressionMessageAnchorKey(visWithIdx[i].m);
       if(!candidate) continue;
+      const anchorTs=String(anchorKey.ts??'');
+      const candidateTs=String(candidate.ts??'');
       if(
         candidate.role===String(anchorKey.role||'') &&
-        String(candidate.ts??'')===String(anchorKey.ts??'') &&
+        (!anchorTs||!candidateTs||candidateTs===anchorTs) &&
         String(candidate.text||'')===String(anchorKey.text||'') &&
         Number(candidate.attachments||0)===Number(anchorKey.attachments||0)
       ){
@@ -4483,6 +4485,24 @@ function _compressionAnchorIndex(visWithIdx, anchorKey, fallbackIdx=null){
     }
   }
   return typeof fallbackIdx==='number' ? fallbackIdx : null;
+}
+function _latestCompressionReferenceMessage(messages, summaryText=''){
+  if(!Array.isArray(messages)||!messages.length) return {message:null, rawIdx:-1};
+  const summaryNorm=String(summaryText||'').replace(/\s+/g,' ').trim();
+  for(let i=messages.length-1;i>=0;i--){
+    const m=messages[i];
+    if(!_isContextCompactionMessage(m)) continue;
+    if(!summaryNorm) return {message:m, rawIdx:i};
+    let content='';
+    try{
+      content=String(msgContent(m)||'');
+    }catch(_){
+      content=String((m&&m.content)||'');
+    }
+    const contentNorm=content.replace(/\s+/g,' ').trim();
+    if(contentNorm.includes(summaryNorm)) return {message:m, rawIdx:i};
+  }
+  return {message:null, rawIdx:-1};
 }
 function _compressionReferenceCardHtml(text, open=false){
   const preview=text.split(/\n+/).filter(Boolean).slice(0,2).join(' ');
@@ -4886,7 +4906,10 @@ function renderMessages(options){
   $('emptyState').style.display=(vis.length||preservedCompressionTaskMessages.length)?'none':'';
   inner.innerHTML='';
   const compressionNode=compressionState?_compressionCardsNode(compressionState):null;
-  const referenceMessage=S.messages.find(m=>_isContextCompactionMessage(m));
+  const {message:referenceMessage, rawIdx:referenceMessageRawIdx}=_latestCompressionReferenceMessage(
+    S.messages,
+    sessionCompressionSummary
+  );
   const referenceText=referenceMessage
     ? msgContent(referenceMessage)||String(referenceMessage.content||'')
     : sessionCompressionSummary;
@@ -4937,13 +4960,19 @@ function renderMessages(options){
       break;
     }
   }
-  const insertionAnchor=_compressionAnchorIndex(
-    renderVisWithIdx,
+  const insertionAnchorFull=_compressionAnchorIndex(
+    visWithIdx,
     compressionState ? compressionState.anchorMessageKey : sessionCompressionAnchorKey,
     compressionState
       ? (typeof compressionState.anchorVisibleIdx==='number' ? compressionState.anchorVisibleIdx : compressionState.anchorRawIdx)
       : sessionCompressionAnchor
   );
+  let insertionAnchor=null;
+  if(typeof insertionAnchorFull==='number'){
+    if(insertionAnchorFull<windowStart) insertionAnchor=renderVisWithIdx.length?0:null;
+    else if(insertionAnchorFull<windowStart+renderVisWithIdx.length) insertionAnchor=insertionAnchorFull-windowStart;
+    else insertionAnchor=renderVisWithIdx.length?renderVisWithIdx.length-1:null;
+  }
   let _prevSepKey=null;
   let currentAssistantTurn=null;
   const assistantSegments=new Map();
@@ -5162,7 +5191,8 @@ function renderMessages(options){
   const handoffSummaryStates=_collectHandoffSummaryStates(S.messages);
 
   _insertCompressionLikeNode(compressionNode);
-  _insertCompressionLikeNode(referenceNode);
+  if(referenceNode&&referenceMessageRawIdx>=0) _insertCompressionLikeNodeByRawIdx(referenceNode, referenceMessageRawIdx);
+  else _insertCompressionLikeNode(referenceNode);
   _insertCompressionLikeNode(preservedOnlyNode, preservedOnlyAnchor);
   _insertCompressionLikeNode(handoffState?_handoffCardsNode(handoffState):null, renderVisWithIdx.length?renderVisWithIdx.length-1:null);
   for(const entry of handoffSummaryStates){
