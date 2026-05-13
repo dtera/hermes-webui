@@ -3066,6 +3066,7 @@ def handle_get(handler, parsed) -> bool:
     if parsed.path.startswith("/static/"):
         return _serve_static(handler, parsed)
 
+
     if parsed.path == "/api/session/worktree/status":
         query = parse_qs(parsed.query)
         sid = query.get("session_id", [""])[0]
@@ -4272,6 +4273,58 @@ def handle_post(handler, parsed) -> bool:
                 logger.debug("Failed to close workspace terminal after workspace update")
         set_last_workspace(new_ws)
         return j(handler, {"session": s.compact() | {"messages": s.messages}})
+
+
+
+    if parsed.path == "/api/session/worktree/status":
+        query = parse_qs(parsed.query)
+        sid = query.get("session_id", [""])[0]
+        if not sid:
+            return bad(handler, "session_id is required", status=400)
+        try:
+            s = get_session(sid, metadata_only=True)
+        except KeyError:
+            return bad(handler, "Session not found", status=404)
+        try:
+            from api.worktrees import worktree_status_for_session
+
+            return j(handler, {"status": worktree_status_for_session(s)})
+        except ValueError as exc:
+            return bad(handler, str(exc), status=400)
+        except Exception as exc:
+            logger.exception("failed to read worktree status for session %s", sid)
+            return bad(handler, _sanitize_error(exc), status=500)
+
+    if parsed.path == "/api/session/compress/status":
+        query = parse_qs(parsed.query)
+        return _handle_session_compress_status(handler, query.get("session_id", [""])[0])
+
+    if parsed.path == "/api/session":
+        import time as _time
+        _t0 = _time.monotonic()
+        _debug_slow = os.environ.get("HERMES_DEBUG_SLOW", "")
+    if parsed.path == "/api/session/worktree/remove":
+        sid = body.get("session_id", "")
+        if not sid or not isinstance(sid, str) or not sid.strip():
+            return bad(handler, "session_id must be a non-empty string", status=400)
+        sid = sid.strip()
+        if not all(c in '0123456789abcdefghijklmnopqrstuvwxyz_' for c in sid):
+            return bad(handler, "Invalid session_id", 400)
+        try:
+            s = get_session(sid, metadata_only=True)
+        except KeyError:
+            return bad(handler, "Session not found", status=404)
+        force = bool(body.get("force", False))
+        try:
+            from api.worktrees import remove_worktree_for_session
+
+            result = remove_worktree_for_session(s, force=force)
+            return j(handler, result)
+        except ValueError as exc:
+            return bad(handler, str(exc), status=400)
+        except Exception as exc:
+            logger.exception("failed to remove worktree for session %s", sid)
+            return bad(handler, _sanitize_error(exc), status=500)
 
     if parsed.path == "/api/session/delete":
         sid = body.get("session_id", "")
