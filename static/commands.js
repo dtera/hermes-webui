@@ -484,6 +484,9 @@ async function resumeManualCompressionForSession(sid){
     if(!S.session||S.session.session_id!==sid) return;
     await _applyManualCompressionResult(done, status.focus_topic||'', visibleCount, status.focus_topic?`/compress ${status.focus_topic}`:'/compress');
   }catch(e){
+    // No active compression job or transient server error — not a real failure.
+    // 404: route missed or session gone; 5xx: backend exception during status check.
+    if(e&&(!e.status||e.status===404||e.status>=500)) return;
     if(S.session&&S.session.session_id===sid&&typeof setCompressionUi==='function'){
       const visibleMessages=_manualCompressionVisibleMessages();
       setCompressionUi({
