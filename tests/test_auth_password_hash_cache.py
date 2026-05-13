@@ -22,19 +22,25 @@ import time
 import unittest
 from pathlib import Path
 
-# Isolate state dir from production
+# Isolate state dir from production — only affects the auth module reload.
+# We deliberately do NOT delete api.config from sys.modules (unlike some
+# sibling test files that need a fresh config import).  Deleting api.config
+# would change its module-level STATE_DIR global and leak into all
+# subsequently collected tests (breaking test_pytest_state_isolation.py).
 import tempfile
 _TEST_STATE = Path(tempfile.mkdtemp())
 os.environ["HERMES_WEBUI_STATE_DIR"] = str(_TEST_STATE)
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Ensure a clean module state
-for mod in list(sys.modules.keys()):
-    if 'api.auth' in mod or 'api.config' in mod:
-        del sys.modules[mod]
-
-import api.auth as auth
+# Force a fresh import of the auth module so it picks up the isolated env var.
+# The auth module re-executes `from api.config import STATE_DIR, load_settings`
+# at import time, but api.config is already in sys.modules — Python just
+# rebinds the names from the existing module, keeping the conftest STATE_DIR
+# untouched.
+import api.auth
+importlib.reload(api.auth)
+auth = api.auth
 
 
 class TestPasswordHashCache(unittest.TestCase):
