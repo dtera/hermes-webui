@@ -953,6 +953,32 @@ def _clear_stale_stream_state(session) -> bool:
             pass
     return True
 
+
+def _reconcile_stale_stream_state_for_session_rows(session_rows) -> bool:
+    """Clear stale persisted stream fields before /api/sessions serializes rows."""
+    changed = False
+    for row in session_rows:
+        if not isinstance(row, dict):
+            continue
+        sid = row.get("session_id")
+        if not sid or not row.get("active_stream_id"):
+            continue
+        if row.get("is_streaming") is True:
+            continue
+        try:
+            session = get_session(sid, metadata_only=True)
+        except Exception:
+            logger.debug(
+                "Failed to load session %s while reconciling stale stream state",
+                sid,
+                exc_info=True,
+            )
+            continue
+        if session is None:
+            continue
+        changed = _clear_stale_stream_state(session) or changed
+    return changed
+
 # ── CSRF: validate Origin/Referer on POST ────────────────────────────────────
 import re as _re
 
@@ -3397,6 +3423,10 @@ def handle_get(handler, parsed) -> bool:
         try:
             diag.stage("all_sessions")
             webui_sessions = all_sessions(diag=diag)
+            diag.stage("reconcile_stale_stream_state")
+            if _reconcile_stale_stream_state_for_session_rows(webui_sessions):
+                diag.stage("all_sessions_after_stale_stream_reconcile")
+                webui_sessions = all_sessions(diag=diag)
             diag.stage("load_settings")
             settings = load_settings()
             show_cli_sessions = bool(settings.get("show_cli_sessions"))
