@@ -48,6 +48,11 @@
 
 - **PR #2150** by @Jordan-SkyLF — "Refresh usage" button on the Provider quota card in Settings → Providers. Calls `/api/provider/quota?refresh=1&ts=<now>` with `cache: 'no-store'` to bypass browser, service worker, and reverse-proxy caches that may have stamped a previous quota response, then re-renders just the quota card from the fresh response and shows a `Last checked ...` timestamp. Disabled `Refreshing…` state during the in-flight request; success toast on completion or failure toast if the refresh fails. Note: the `refresh=1` query param is a no-op at the server today (`get_provider_quota()` has no in-process cache layer), so the win is strictly browser-side cache-bust + the `no-store` fetch option. A future maintainer follow-up may add server-side TTL caching of OAuth account-limit fetches, at which point the `refresh=1` param becomes load-bearing on both sides.
 
+### Documentation
+
+- Refreshed the README / TESTING / ARCHITECTURE current-state snapshots for `v0.51.54`: default model override semantics, test collection counts, file inventory line counts, default state/log paths, and the top-level docs index now match the current code. Also corrected the Docker init banner for `HERMES_WEBUI_STATE_DIR`.
+- Added a tracked root `AGENTS.md` entry point plus `docs/onboarding-agent-checklist.md` for assistant-led install/reinstall support, with safety rules for real Hermes state, isolated trial commands, non-secret evidence collection, onboarding pass/fail criteria, and a redacted support-report format. Linked the checklist from the README and first-run onboarding guide so assistants helping with setup see it before running commands.
+
 ## [v0.51.51] — 2026-05-12 — Release AA (stage-344 — 16-PR contributor batch — i18n + insights bucketing/mobile + manual-compress async + workspace recovery + iOS PWA scroll + Cloudflare login health + fr locale)
 
 ### Added
