@@ -135,6 +135,7 @@ The bootstrap will:
 
 If provider setup is still incomplete after install, the onboarding wizard will point you to finish it with `hermes model` instead of trying to replicate the full CLI setup in-browser.
 For a step-by-step walkthrough of the wizard, provider choices, local model server Base URLs, and safe re-runs, see [`docs/onboarding.md`](docs/onboarding.md).
+If an AI assistant is helping with install, reinstall, bootstrap, provider setup, or first-run support, have it read [`docs/onboarding-agent-checklist.md`](docs/onboarding-agent-checklist.md) before running commands or inspecting logs.
 
 ---
 
@@ -369,7 +370,7 @@ Or using the agent venv explicitly:
 
 Tests run against an isolated server with a separate state directory.
 Production data and real cron jobs are never touched. Current snapshot:
-**5271 tests collected** across **483 test files**.
+**5272 tests collected** across **483 test files**.
 
 ---
 
@@ -517,7 +518,7 @@ static/
   boot.js               Mobile nav, voice input, boot IIFE (~1607 lines)
 tests/
   conftest.py           Isolated test server/state fixtures
-  483 test files         5271 tests collected
+  483 test files         5272 tests collected
 Dockerfile              python:3.12-slim container image
 docker-compose.yml      Compose with named volume and optional auth
 .github/workflows/      CI: multi-arch Docker build + GitHub Release on tag
@@ -540,6 +541,7 @@ State lives outside the repo at `~/.hermes/webui/` by default
 - `docs/docker.md` -- Docker compose setup, common failures, and bind-mount migration
 - `docs/supervisor.md` -- launchd, systemd, supervisord, runit, and s6 process-supervisor setup
 - `docs/onboarding.md` -- first-run wizard, provider setup, local model server Base URLs, and safe re-runs
+- `docs/onboarding-agent-checklist.md` -- safety rules, evidence commands, and pass/fail checks for assistant-led install or reinstall support
 - `docs/troubleshooting.md` -- diagnostic flows for common failures (e.g. "AIAgent not available")
 - `docs/wsl-autostart.md` -- WSL2 auto-start at Windows login
 - `docs/EXTENSIONS.md` -- administrator-controlled WebUI extension injection

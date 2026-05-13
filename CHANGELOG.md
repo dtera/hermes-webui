@@ -51,6 +51,7 @@
 ### Documentation
 
 - Refreshed the README / TESTING / ARCHITECTURE current-state snapshots for `v0.51.52`: default model override semantics, test collection counts, file inventory line counts, default state/log paths, and the top-level docs index now match the current code. Also corrected the Docker init banner for `HERMES_WEBUI_STATE_DIR`.
+- Added a tracked root `AGENTS.md` entry point plus `docs/onboarding-agent-checklist.md` for assistant-led install/reinstall support, with safety rules for real Hermes state, isolated trial commands, non-secret evidence collection, onboarding pass/fail criteria, and a redacted support-report format. Linked the checklist from the README and first-run onboarding guide so assistants helping with setup see it before running commands.
 
 ## [v0.51.51] — 2026-05-12 — Release AA (stage-344 — 16-PR contributor batch — i18n + insights bucketing/mobile + manual-compress async + workspace recovery + iOS PWA scroll + Cloudflare login health + fr locale)
 
