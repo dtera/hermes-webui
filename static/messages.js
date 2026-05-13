@@ -762,6 +762,7 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
       const wordRe=/(\S+)(\s*)/g;
       const value=String(text||'');
       const reduceMotion=_streamFadeReduceMotionEnabled();
+      const appendStartedAt=performance.now();
       let last=0, match, changed=false;
       while((match=wordRe.exec(value))){
         if(match.index>last) frag.appendChild(document.createTextNode(value.slice(last,match.index)));
@@ -776,11 +777,10 @@ function attachLiveStream(activeSid, streamId, uploaded=[], options={}){
         span.className='stream-fade-word is-new';
         const delayMs=_streamFadeAppendOffset*_STREAM_FADE_STAGGER_MS;
         span.style.animationDelay=delayMs+'ms';
-        span.style.setProperty('--stream-fade-ms',_STREAM_FADE_MS+'ms');
         span.textContent=match[1];
         frag.appendChild(span);
         _streamFadeAppendOffset+=1;
-        _streamFadeLatestAnimationEndAt=Math.max(_streamFadeLatestAnimationEndAt,performance.now()+delayMs+_STREAM_FADE_MS);
+        _streamFadeLatestAnimationEndAt=Math.max(_streamFadeLatestAnimationEndAt,appendStartedAt+delayMs+_STREAM_FADE_MS);
         if(match[2]) frag.appendChild(document.createTextNode(match[2]));
         last=match.index+match[0].length;
         changed=true;

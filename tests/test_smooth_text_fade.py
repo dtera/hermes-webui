@@ -162,6 +162,7 @@ def test_stream_fade_uses_incremental_renderer_without_changing_default_path():
         [
             "span.className='stream-fade-word is-new'",
             "_streamFadeReduceMotionEnabled()",
+            "const appendStartedAt=performance.now()",
             "renderer.set_attr",
             "data-blocked-scheme",
             "_streamFadeLatestAnimationEndAt",
