@@ -4486,6 +4486,24 @@ function _compressionAnchorIndex(visWithIdx, anchorKey, fallbackIdx=null){
   }
   return typeof fallbackIdx==='number' ? fallbackIdx : null;
 }
+function _latestCompressionReferenceMessage(messages, summaryText=''){
+  if(!Array.isArray(messages)||!messages.length) return {message:null, rawIdx:-1};
+  const summaryNorm=String(summaryText||'').replace(/\s+/g,' ').trim();
+  for(let i=messages.length-1;i>=0;i--){
+    const m=messages[i];
+    if(!_isContextCompactionMessage(m)) continue;
+    if(!summaryNorm) return {message:m, rawIdx:i};
+    let content='';
+    try{
+      content=String(msgContent(m)||'');
+    }catch(_){
+      content=String((m&&m.content)||'');
+    }
+    const contentNorm=content.replace(/\s+/g,' ').trim();
+    if(contentNorm.includes(summaryNorm)) return {message:m, rawIdx:i};
+  }
+  return {message:null, rawIdx:-1};
+}
 function _compressionReferenceCardHtml(text, open=false){
   const preview=text.split(/\n+/).filter(Boolean).slice(0,2).join(' ');
   return `
@@ -4889,8 +4907,10 @@ function renderMessages(options){
   $('emptyState').style.display=(vis.length||preservedCompressionTaskMessages.length)?'none':'';
   inner.innerHTML='';
   const compressionNode=compressionState?_compressionCardsNode(compressionState):null;
-  const referenceMessage=S.messages.find(m=>_isContextCompactionMessage(m));
-  const referenceMessageRawIdx=referenceMessage?S.messages.findIndex(m=>m===referenceMessage):-1;
+  const {message:referenceMessage, rawIdx:referenceMessageRawIdx}=_latestCompressionReferenceMessage(
+    S.messages,
+    sessionCompressionSummary
+  );
   const referenceText=referenceMessage
     ? msgContent(referenceMessage)||String(referenceMessage.content||'')
     : sessionCompressionSummary;

@@ -247,9 +247,34 @@ def test_compression_anchor_index_is_translated_into_render_window():
 def test_reference_message_uses_raw_transcript_position_before_anchor_fallback():
     src = _read("static/ui.js")
 
-    assert "const referenceMessageRawIdx=referenceMessage?S.messages.findIndex(m=>m===referenceMessage):-1;" in src
+    assert "const {message:referenceMessage, rawIdx:referenceMessageRawIdx}=_latestCompressionReferenceMessage(" in src
     assert "if(referenceNode&&referenceMessageRawIdx>=0) _insertCompressionLikeNodeByRawIdx(referenceNode, referenceMessageRawIdx);" in src
     assert "else _insertCompressionLikeNode(referenceNode);" in src
+
+
+def test_reference_message_selection_prefers_latest_matching_marker():
+    src = _read("static/ui.js")
+    start = src.find("function _latestCompressionReferenceMessage")
+    assert start != -1, "compression reference selection helper not found"
+    end = src.find("function _compressionReferenceCardHtml", start)
+    assert end != -1, "compression reference renderer not found after selection helper"
+    helper = src[start:end]
+
+    assert "for(let i=messages.length-1;i>=0;i--)" in helper
+    assert "if(!summaryNorm) return {message:m, rawIdx:i};" in helper
+    assert "if(contentNorm.includes(summaryNorm)) return {message:m, rawIdx:i};" in helper
+
+
+def test_reference_message_falls_back_to_current_summary_when_only_stale_markers_exist():
+    src = _read("static/ui.js")
+    start = src.find("function _latestCompressionReferenceMessage")
+    assert start != -1, "compression reference selection helper not found"
+    end = src.find("function _compressionReferenceCardHtml", start)
+    assert end != -1, "compression reference renderer not found after selection helper"
+    helper = src[start:end]
+
+    assert "const summaryNorm=String(summaryText||'').replace(/\\s+/g,' ').trim();" in helper
+    assert "return {message:null, rawIdx:-1};" in helper
 
 
 def test_preserved_task_list_attaches_once_per_render():
