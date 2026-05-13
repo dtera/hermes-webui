@@ -3195,7 +3195,8 @@ def handle_get(handler, parsed) -> bool:
 
     if parsed.path == "/api/session/compress/status":
         query = parse_qs(parsed.query)
-        return _handle_session_compress_status(handler, query.get("session_id", [""])[0])
+        _handle_session_compress_status(handler, query.get("session_id", [""])[0])
+        return True
 
     if parsed.path == "/api/session":
         import time as _time
