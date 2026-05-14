@@ -5187,6 +5187,16 @@ def handle_post(handler, parsed) -> bool:
         sid = body["session_id"]
         try:
             s = get_session(sid)
+            # #1558: save() refuses metadata-only session stubs because their
+            # messages list is intentionally empty. If a sidebar/status preload
+            # left one in the LRU cache, upgrade to a full disk load before
+            # mutating archived state so the guard stays intact.
+            if getattr(s, "_loaded_metadata_only", False):
+                s = Session.load(sid)
+                if s is None:
+                    raise KeyError(sid)
+                with LOCK:
+                    SESSIONS[sid] = s
         except KeyError:
             cli_meta = _lookup_cli_session_metadata(sid)
             if not cli_meta:

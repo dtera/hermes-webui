@@ -130,6 +130,53 @@ def test_clear_stale_stream_state_preserves_messages(temp_session_dir):
     )
 
 
+def test_archive_route_reloads_metadata_only_cached_session(temp_session_dir, monkeypatch):
+    """Archiving must upgrade cached metadata-only stubs before save()."""
+    from types import SimpleNamespace
+
+    import api.routes as routes
+    from api.models import LOCK, SESSIONS, Session, get_session
+    monkeypatch.setattr(routes, "SESSIONS", SESSIONS)
+
+    sid = _make_session_on_disk(temp_session_dir, n_msgs=12, with_active_stream=False)
+    stub = get_session(sid, metadata_only=True)
+    assert getattr(stub, "_loaded_metadata_only", False) is True
+    assert stub.messages == []
+
+    # Reproduce the bad cache state: get_session() returns cached entries before
+    # considering the requested load mode, so a metadata-only stub in SESSIONS
+    # used to flow straight into archive mutation and hit the #1558 save guard.
+    with LOCK:
+        SESSIONS[sid] = stub
+
+    captured = {}
+    monkeypatch.setattr(routes, "_check_csrf", lambda handler: True)
+    monkeypatch.setattr(routes, "read_body", lambda handler: {"session_id": sid, "archived": True})
+    monkeypatch.setattr(
+        routes,
+        "j",
+        lambda handler, payload, status=200, extra_headers=None: captured.update(
+            payload=payload,
+            status=status,
+        )
+        or True,
+    )
+
+    assert routes.handle_post(object(), SimpleNamespace(path="/api/session/archive")) is True
+
+    assert captured["status"] == 200
+    assert captured["payload"]["session"]["archived"] is True
+
+    reloaded = Session.load(sid)
+    assert reloaded.archived is True
+    assert len(reloaded.messages) == 12
+
+    with LOCK:
+        cached = SESSIONS[sid]
+    assert getattr(cached, "_loaded_metadata_only", False) is False
+    assert len(cached.messages) == 12
+
+
 def test_save_writes_bak_when_messages_shrink(temp_session_dir):
     """The backup safeguard: a save that shrinks messages must leave a .bak."""
     from api.models import Session
@@ -323,4 +370,3 @@ def test_msg_count_returns_neg1_for_non_dict_top_level(temp_session_dir):
     list_shaped.write_text(json.dumps([{"session_id": "x"}]), encoding="utf-8")
     # Pre-fix: AttributeError. Post-fix: -1.
     assert _msg_count(list_shaped) == -1
-
