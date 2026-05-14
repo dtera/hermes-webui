@@ -1034,6 +1034,27 @@ def _clear_stale_stream_state(session) -> bool:
     return True
 
 
+def _ensure_full_session_before_mutation(sid: str, session):
+    """Reload cached metadata-only sessions before mutating persisted fields.
+
+    Session.save() intentionally refuses metadata-only stubs (#1558) because
+    their messages list is empty by design. Mutation routes that save session
+    metadata must upgrade the cached stub first so they do not trip that guard
+    or risk writing an incomplete object.
+    """
+    if not getattr(session, "_loaded_metadata_only", False):
+        return session
+    full_session = Session.load(sid)
+    if full_session is None:
+        raise KeyError(sid)
+    with LOCK:
+        SESSIONS[sid] = full_session
+        SESSIONS.move_to_end(sid)
+        while len(SESSIONS) > SESSIONS_MAX:
+            SESSIONS.popitem(last=False)
+    return full_session
+
+
 def _reconcile_stale_stream_state_for_session_rows(session_rows) -> bool:
     """Clear stale persisted stream fields before /api/sessions serializes rows."""
     changed = False
@@ -4362,6 +4383,7 @@ def handle_post(handler, parsed) -> bool:
             return bad(handler, str(e))
         try:
             s = get_session(body["session_id"])
+            s = _ensure_full_session_before_mutation(body["session_id"], s)
         except KeyError:
             return bad(handler, "Session not found", 404)
         with _get_session_agent_lock(body["session_id"]):
@@ -4380,6 +4402,7 @@ def handle_post(handler, parsed) -> bool:
         name = body["name"].strip()
         try:
             s = get_session(sid)
+            s = _ensure_full_session_before_mutation(sid, s)
         except KeyError:
             return bad(handler, "Session not found", 404)
         # Resolve personality from config.yaml agent.personalities section
@@ -5171,6 +5194,7 @@ def handle_post(handler, parsed) -> bool:
             return bad(handler, str(e))
         try:
             s = get_session(body["session_id"])
+            s = _ensure_full_session_before_mutation(body["session_id"], s)
         except KeyError:
             return bad(handler, "Session not found", 404)
         with _get_session_agent_lock(body["session_id"]):

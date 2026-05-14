@@ -20,6 +20,7 @@ This test reproduces the data loss path against the on-disk session file.
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -370,3 +371,74 @@ def test_msg_count_returns_neg1_for_non_dict_top_level(temp_session_dir):
     list_shaped.write_text(json.dumps([{"session_id": "x"}]), encoding="utf-8")
     # Pre-fix: AttributeError. Post-fix: -1.
     assert _msg_count(list_shaped) == -1
+
+
+@pytest.mark.parametrize(
+    ("path", "body", "assertion"),
+    [
+        (
+            "/api/session/pin",
+            {"session_id": "{sid}", "pinned": True},
+            lambda session: session.pinned is True,
+        ),
+        (
+            "/api/session/rename",
+            {"session_id": "{sid}", "title": "Renamed metadata-only session"},
+            lambda session: session.title == "Renamed metadata-only session",
+        ),
+        (
+            "/api/personality/set",
+            {"session_id": "{sid}", "name": ""},
+            lambda session: session.personality is None,
+        ),
+    ],
+)
+def test_metadata_only_cached_session_mutation_routes_reload_full_session(
+    temp_session_dir, monkeypatch, path, body, assertion
+):
+    """Session metadata mutation routes must not save cached metadata-only stubs."""
+    import api.routes as routes
+    from api.models import LOCK, SESSIONS, Session, get_session
+
+    sid = _make_session_on_disk(
+        temp_session_dir,
+        sid="s_metadata_mutation",
+        n_msgs=12,
+        with_active_stream=False,
+    )
+    full_before = Session.load(sid)
+    full_before.personality = "old-personality"
+    full_before.save(skip_index=True)
+
+    stub = get_session(sid, metadata_only=True)
+    assert getattr(stub, "_loaded_metadata_only", False) is True
+    assert stub.messages == []
+    with LOCK:
+        SESSIONS[sid] = stub
+    monkeypatch.setattr(routes, "SESSIONS", SESSIONS)
+
+    request_body = {
+        key: (sid if value == "{sid}" else value)
+        for key, value in body.items()
+    }
+    captured = {}
+    monkeypatch.setattr(routes, "_check_csrf", lambda handler: True)
+    monkeypatch.setattr(routes, "read_body", lambda handler: request_body)
+    monkeypatch.setattr(
+        routes,
+        "j",
+        lambda handler, payload, status=200, extra_headers=None: captured.update(
+            payload=payload, status=status
+        ) or True,
+    )
+
+    assert routes.handle_post(object(), SimpleNamespace(path=path)) is True
+    assert captured["status"] == 200
+
+    saved = Session.load(sid)
+    assert assertion(saved)
+    assert len(saved.messages) == 12
+    with LOCK:
+        cached = SESSIONS[sid]
+    assert getattr(cached, "_loaded_metadata_only", False) is False
+    assert len(cached.messages) == 12
