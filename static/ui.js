@@ -3878,38 +3878,252 @@ function _formatUpdateTargetStatus(label,info){
   const branch=info.branch?` (${info.branch})`:'';
   return `${label}${branch}: ${info.behind} update${info.behind>1?'s':''}`;
 }
+function _isSafeUpdateCompareUrl(url){
+  if(!url||!/^https?:\/\//i.test(url)) return false;
+  try{
+    const parsed=new URL(url);
+    return parsed.protocol==='https:'||parsed.protocol==='http:';
+  }catch(e){
+    return false;
+  }
+}
+function _updateCompareUrl(info){
+  if(!info) return null;
+  const compareUrl=info.compare_url||null;
+  if(compareUrl) return _isSafeUpdateCompareUrl(compareUrl)?compareUrl:null;
+  const repo_url=info.repo_url;
+  const currentSha=info.current_sha;
+  const latestSha=info.latest_sha;
+  if(!(repo_url&&currentSha&&latestSha)) return null;
+  const fallbackUrl=repo_url+'/compare/'+currentSha+'...'+latestSha;
+  return _isSafeUpdateCompareUrl(fallbackUrl)?fallbackUrl:null;
+}
+function _updateWhatsNewTargets(data){
+  const targets=[
+    {key:'webui',label:'WebUI',info:data&&data.webui},
+    {key:'agent',label:'Agent',info:data&&data.agent},
+  ];
+  return targets.map((target)=>({
+    key:target.key,
+    label:target.label,
+    info:target.info,
+    url:_updateCompareUrl(target.info),
+  })).filter((target)=>target.info&&target.info.behind>0&&target.url);
+}
+function _appendUpdateDiffLinks(container,targets,prefix){
+  if(!container) return;
+  if(prefix) container.appendChild(document.createTextNode(prefix));
+  targets.forEach((target,idx)=>{
+    if(idx>0) container.appendChild(document.createTextNode(' \u00b7 '));
+    const link=document.createElement('a');
+    link.href=target.url;
+    link.target='_blank';
+    link.rel='noopener';
+    link.style.color='var(--accent)';
+    link.style.textDecoration='underline';
+    link.textContent=target.label;
+    container.appendChild(link);
+  });
+}
+function _hideUpdateSummaryPanel(){
+  const panel=$('updateSummaryPanel');
+  const text=$('updateSummaryText');
+  const links=$('updateSummaryDiffLinks');
+  if(panel) panel.style.display='none';
+  if(text) text.textContent='';
+  if(links){links.replaceChildren();links.style.display='none';}
+}
+const WHATS_NEW_SUMMARY_STORAGE_KEY='hermes-whats-new-generated-summaries';
+function _loadStoredUpdateSummaries(){
+  window._whatsNewGeneratedSummaries=window._whatsNewGeneratedSummaries||{};
+  try{
+    const raw=sessionStorage.getItem(WHATS_NEW_SUMMARY_STORAGE_KEY);
+    if(!raw) return window._whatsNewGeneratedSummaries;
+    const stored=JSON.parse(raw);
+    if(stored&&typeof stored==='object') window._whatsNewGeneratedSummaries=stored;
+  }catch(_e){
+    try{sessionStorage.removeItem(WHATS_NEW_SUMMARY_STORAGE_KEY);}catch(_ignore){}
+  }
+  return window._whatsNewGeneratedSummaries;
+}
+function _persistGeneratedSummaries(){
+  try{sessionStorage.setItem(WHATS_NEW_SUMMARY_STORAGE_KEY,JSON.stringify(window._whatsNewGeneratedSummaries||{}));}catch(_e){}
+}
+function _pruneGeneratedSummaries(data){
+  const cache=_loadStoredUpdateSummaries();
+  const valid=new Set(_updateWhatsNewTargets(data||{}).map((target)=>target.key));
+  let changed=false;
+  Object.keys(cache).forEach((key)=>{
+    if(!valid.has(key)){delete cache[key];changed=true;}
+  });
+  if(changed) _persistGeneratedSummaries();
+}
+function _updateSummarySignature(info){
+  if(!info) return '';
+  return [info.current_sha||'',info.latest_sha||'',info.behind||0,info.compare_url||''].join('|');
+}
+function _updateSummaryButtonLabel(target,data){
+  const labels=target.key==='webui'
+    ? {generate:'Generate WebUI update summary',view:'View generated WebUI update summary',regenerate:'Re-generate WebUI update summary'}
+    : {generate:'Generate Agent update summary',view:'View generated Agent update summary',regenerate:'Re-generate Agent update summary'};
+  const cache=_loadStoredUpdateSummaries()[target.key];
+  const signature=_updateSummarySignature(data&&data[target.key]);
+  if(cache&&cache.signature===signature&&cache.payload) return labels.view;
+  if(cache&&cache.signature!==signature) return labels.regenerate;
+  return labels.generate;
+}
+function _rememberGeneratedSummary(target,payload,data){
+  if(!target) return;
+  window._whatsNewGeneratedSummaries=window._whatsNewGeneratedSummaries||{};
+  window._whatsNewGeneratedSummaries[target]={
+    signature:_updateSummarySignature(data&&data[target]),
+    payload:payload,
+  };
+  _persistGeneratedSummaries();
+}
+function _renderUpdateSummaryPanel(payload,data,targetKey){
+  const panel=$('updateSummaryPanel');
+  const text=$('updateSummaryText');
+  const links=$('updateSummaryDiffLinks');
+  if(!panel||!text) return;
+  panel.style.display='block';
+  const sections=Array.isArray(payload&&payload.summary_sections)?payload.summary_sections:null;
+  text.replaceChildren();
+  if(sections&&sections.length){
+    const wrap=document.createElement('div');
+    wrap.id='updateSummarySections';
+    wrap.style.display='grid';
+    wrap.style.gap='8px';
+    sections.forEach((section)=>{
+      const block=document.createElement('section');
+      const title=document.createElement('div');
+      title.style.fontWeight='650';
+      title.style.marginBottom='3px';
+      title.textContent=section.title||'Summary';
+      block.appendChild(title);
+      const ul=document.createElement('ul');
+      ul.style.margin='0';
+      ul.style.paddingLeft='18px';
+      (Array.isArray(section.items)?section.items:[]).forEach((item)=>{
+        const li=document.createElement('li');
+        li.textContent=String(item||'').trim();
+        if(li.textContent) ul.appendChild(li);
+      });
+      if(!ul.children.length){
+        const li=document.createElement('li');
+        li.textContent='No summary details available.';
+        ul.appendChild(li);
+      }
+      block.appendChild(ul);
+      wrap.appendChild(block);
+    });
+    text.appendChild(wrap);
+  }else{
+    text.textContent=(payload&&payload.summary)||payload||'No summary available.';
+  }
+  const targets=_updateWhatsNewTargets(data||window._updateData||{}).filter((target)=>!targetKey||target.key===targetKey);
+  if(links){
+    links.replaceChildren();
+    if(targets.length){
+      links.style.display='block';
+      _appendUpdateDiffLinks(links,targets,'Regular diff comparison: ');
+    }else{
+      links.style.display='none';
+    }
+  }
+}
+async function showWhatsNewSummary(target){
+  const data=window._updateData||{};
+  const scopedUpdates=target?{[target]:data[target]}:data;
+  const cache=target?_loadStoredUpdateSummaries()[target]:null;
+  const signature=target?_updateSummarySignature(data[target]):'';
+  if(cache&&cache.signature===signature&&cache.payload){
+    _renderUpdateSummaryPanel(cache.payload,data,target);
+    _renderUpdateWhatsNewLinks(data,{mode:'summary'});
+    return;
+  }
+  _renderUpdateSummaryPanel({summary:'Writing a simple summary…'},data,target);
+  try{
+    const res=await api('/api/updates/summary',{method:'POST',body:JSON.stringify({updates:scopedUpdates,target:target||null})});
+    _rememberGeneratedSummary(target,res,data);
+    _renderUpdateSummaryPanel(res,data,target);
+    _renderUpdateWhatsNewLinks(data,{mode:'summary'});
+  }catch(e){
+    console.warn('[updates] summary failed',e);
+    _renderUpdateSummaryPanel({
+      summary_sections:[
+        {title:"What you'll notice",items:['Could not generate the summary right now.']},
+        {title:'Worth knowing',items:['Try again later, or use the comparison links below for the raw update details.']},
+      ],
+    },data,target);
+  }
+}
+function _renderUpdateWhatsNewLinks(data){
+  const options=arguments.length>1&&arguments[1]?arguments[1]:{};
+  const container=$('updateWhatsNewLinks');
+  if(!container) return;
+  container.replaceChildren();
+  const targets=_updateWhatsNewTargets(data);
+  if(!targets.length){
+    container.style.display='none';
+    _hideUpdateSummaryPanel();
+    return;
+  }
+  container.style.display='block';
+  _pruneGeneratedSummaries(data);
+  const useSummary=(options.mode||'')==='summary'||window._whatsNewSummaryEnabled===true;
+  if(useSummary){
+    targets.forEach((target,idx)=>{
+      if(idx>0) container.appendChild(document.createTextNode(' \u00b7 '));
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='linklike';
+      btn.style.color='var(--accent)';
+      btn.style.textDecoration='underline';
+      btn.style.background='none';
+      btn.style.border='0';
+      btn.style.padding='0';
+      btn.style.cursor='pointer';
+      btn.textContent=_updateSummaryButtonLabel(target,data);
+      btn.onclick=()=>showWhatsNewSummary(target.key);
+      container.appendChild(btn);
+    });
+    return;
+  }
+  _hideUpdateSummaryPanel();
+  if(targets.length===1){
+    const target=targets[0];
+    const link=document.createElement('a');
+    link.href=target.url;
+    link.target='_blank';
+    link.rel='noopener';
+    link.style.color='var(--accent)';
+    link.style.textDecoration='underline';
+    link.textContent="What's new in "+target.label+'?';
+    container.appendChild(link);
+    return;
+  }
+  _appendUpdateDiffLinks(container,targets,"What's new: ");
+}
 function _showUpdateBanner(data){
   const parts=[];
   const webuiPart=_formatUpdateTargetStatus('WebUI',data.webui);
   const agentPart=_formatUpdateTargetStatus('Agent',data.agent);
   if(webuiPart) parts.push(webuiPart);
   if(agentPart) parts.push(agentPart);
-  if(!parts.length)return;
+  window._updateData=data;
+  if(!parts.length){
+    _renderUpdateWhatsNewLinks(data);
+    const staleBanner=$('updateBanner');
+    if(staleBanner) staleBanner.classList.remove('visible');
+    return;
+  }
   const msg=$('updateMsg');
   if(msg) msg.textContent='\u2B06 '+parts.join(', ')+' available';
   const banner=$('updateBanner');
   if(banner) banner.classList.add('visible');
-  window._updateData=data;
-  // Wire up "What's new?" link.
-  //
-  // Reset display:none + clear the href on every render — otherwise a stale
-  // link from a prior update banner can stay visible after we've moved past
-  // a state where the new payload no longer carries usable SHAs (#1579 case
-  // when the local HEAD diverges from upstream and the compare URL would 404).
-  const link=$('updateWhatsNew');
-  if(link){
-    link.style.display='none';
-    link.removeAttribute('href');
-    if(data.webui){
-      const repoUrl=data.webui.repo_url;
-      const curSha=data.webui.current_sha;
-      const newSha=data.webui.latest_sha;
-      if(repoUrl && curSha && newSha){
-        link.href=repoUrl+'/compare/'+curSha+'...'+newSha;
-        link.style.display='inline';
-      }
-    }
-  }
+  const summaryMode=window._whatsNewSummaryEnabled===true?'summary':'diff';
+  _renderUpdateWhatsNewLinks(data,{mode:summaryMode});
 }
 function dismissUpdate(){
   const b=$('updateBanner');if(b)b.classList.remove('visible');
@@ -4236,7 +4450,7 @@ function _messageHasReasoningPayload(m){
   if(!m||m.role!=='assistant') return false;
   if(m.reasoning) return true;
   if(Array.isArray(m.content)) return m.content.some(p=>p&&(p.type==='thinking'||p.type==='reasoning'));
-  return /<think>[\s\S]*?<\/think>|<\|channel>thought\n[\s\S]*?<channel\|>|<\|turn\|>thinking\n[\s\S]*?<turn\|>/.test(String(m.content||''));
+  return /^\s*(?:<think>[\s\S]*?<\/think>|<\|channel\|?>thought\n?[\s\S]*?<channel\|>|<\|turn\|>thinking\n[\s\S]*?<turn\|>)/.test(String(m.content||''));
 }
 function _formatTurnTps(value){
   const n=Number(value);
@@ -5101,25 +5315,25 @@ function renderMessages(options){
     }
     if(!thinkingText && m.reasoning) thinkingText=m.reasoning;
     if(!thinkingText && typeof content==='string'){
-      const thinkMatch=content.match(/<think>([\s\S]*?)<\/think>/);
+      const thinkMatch=content.match(/^\s*<think>([\s\S]*?)<\/think>\s*/);
       if(thinkMatch){
         thinkingText=thinkMatch[1].trim();
-        content=content.replace(/<think>[\s\S]*?<\/think>\s*/,'').trimStart();
+        content=content.replace(/^\s*<think>[\s\S]*?<\/think>\s*/,'').trimStart();
       }
       if(!thinkingText){
         // Historical name "gemmaMatch" refers to MiniMax <|channel>thought format.
-        const gemmaMatch=content.match(/<\|channel>thought\n([\s\S]*?)<channel\|>/);
+        const gemmaMatch=content.match(/^\s*<\|channel\|?>thought\n?([\s\S]*?)<channel\|>\s*/);
         if(gemmaMatch){
           thinkingText=gemmaMatch[1].trim();
-          content=content.replace(/<\|channel>thought\n[\s\S]*?<channel\|>\s*/,'').trimStart();
+          content=content.replace(/^\s*<\|channel\|?>thought\n?[\s\S]*?<channel\|>\s*/,'').trimStart();
         }
       }
       if(!thinkingText){
         // Gemma 4 uses asymmetric <|turn|>thinking\n...<turn|> delimiters.
-        const gemmaTurnMatch=content.match(/<\|turn\|>thinking\n([\s\S]*?)<turn\|>/);
+        const gemmaTurnMatch=content.match(/^\s*<\|turn\|>thinking\n([\s\S]*?)<turn\|>\s*/);
         if(gemmaTurnMatch){
           thinkingText=gemmaTurnMatch[1].trim();
-          content=content.replace(/<\|turn\|>thinking\n[\s\S]*?<turn\|>\s*/,'').trimStart();
+          content=content.replace(/^\s*<\|turn\|>thinking\n[\s\S]*?<turn\|>\s*/,'').trimStart();
         }
       }
     }
