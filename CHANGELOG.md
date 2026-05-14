@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- **PR #2219** by @franksong2702 (refs #2218) — Compact sidebar density no longer shows compressed-session prior-turn lineage badges or expandable lineage segment rows. The sidebar still collapses compressed continuations to the latest tip, but the advanced lineage metadata now appears only in Detailed density so the default session list stays focused on ordinary session switching.
+
 - **PR #2210** by @Jordan-SkyLF — MCP Tools list in Settings → System no longer renders an unbounded inventory that makes the settings panel scroll-trapping. Added a toolbar (result-count summary, page-size 5/10/20/50/all, search input), bounded scroll area with consistent height, paginated rendering, and focused regression coverage for the large-inventory case. Existing WebUI-only/runtime-only contract preserved (no MCP server probing, no agent-side changes). Visual before/after evidence shipped under `docs/pr-media/2210/`.
 
 - **PR #2213** by @franksong2702 (fixes #2152) — Literal `<think>`/`</think>` discussions in normal assistant prose are no longer stripped from saved messages and re-renders. The old server cleanup and stored-message render regexes stripped the first closed thinking-looking block anywhere in the content. PR aligns saved/static paths with the existing streaming rule: provider reasoning wrappers (`<think>...</think>`, MiniMax `<|channel>thought...<channel|>`, Gemma 4 `<|turn|>thinking...<turn|>`) are stripped only when they lead the response (i.e. the wrapper is the first non-whitespace content).
