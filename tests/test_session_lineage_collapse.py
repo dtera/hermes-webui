@@ -572,10 +572,56 @@ def test_sidebar_search_and_rows_use_read_only_display_title():
     assert "function _sessionDisplayTitle" in js
     assert "function _sessionTitleTags" in js
     assert "_allSessions.filter(s=>_sessionDisplayTitle(s).toLowerCase().includes(q))" in js
+    assert "_allSessions.filter(s => _sessionDisplayTitle(s).toLowerCase().includes(q.toLowerCase()))" in js
     assert "const rawTitle=_sessionDisplayTitle(s);" in js
     assert "const tags=_sessionTitleTags(rawTitle);" in js
     assert "const segTitle=_sessionDisplayTitle(seg)||t('session_lineage_segment_untitled');" in js
     assert "const childTitle=_sessionDisplayTitle(child)||'Untitled child session';" in js
+
+
+def test_child_session_parent_segment_note_uses_display_title():
+    """A child attached through a hidden parent segment should show the reconciled segment title."""
+    js = SESSIONS_JS_PATH.read_text(encoding="utf-8")
+    source = f"""
+const src = {js!r};
+function extractFunc(name) {{
+  const re = new RegExp('function\\\\s+' + name + '\\\\s*\\\\(');
+  const start = src.search(re);
+  if (start < 0) throw new Error(name + ' not found');
+  let i = src.indexOf('{{', start);
+  let depth = 1; i++;
+  while (depth > 0 && i < src.length) {{
+    if (src[i] === '{{') depth++;
+    else if (src[i] === '}}') depth--;
+    i++;
+  }}
+  return src.slice(start, i);
+}}
+eval(extractFunc('_isChildSession'));
+eval(extractFunc('_sidebarLineageKeyForRow'));
+eval(extractFunc('_sessionDisplayTitle'));
+eval(extractFunc('_attachChildSessionsToSidebarRows'));
+const parentRow={{
+  session_id:'tip',
+  title:'Hermes WebUI #8',
+  _lineage_root_id:'root',
+  _lineage_segments:[
+    {{session_id:'tip', title:'Hermes WebUI #8', display_title:'Hermes WebUI #177'}},
+    {{session_id:'old-parent', title:'Hermes WebUI #8', display_title:'Hermes WebUI #176'}},
+  ],
+}};
+const child={{
+  session_id:'child',
+  title:'Child Session',
+  relationship_type:'child_session',
+  parent_session_id:'old-parent',
+}};
+const rows = _attachChildSessionsToSidebarRows([parentRow], [parentRow, child]);
+console.log(JSON.stringify(rows[0]._child_sessions[0]));
+"""
+    child = json.loads(_run_node(source))
+    assert child["_parent_segment_id"] == "old-parent"
+    assert child["_parent_segment_title"] == "Hermes WebUI #176"
 
 
 def test_default_webui_numbered_titles_are_not_treated_as_hash_tags():
