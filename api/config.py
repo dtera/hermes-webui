@@ -692,6 +692,7 @@ _PROVIDER_DISPLAY = {
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openai-codex": "OpenAI Codex",
+    "xai-oauth": "xAI Grok OAuth",
     "copilot": "GitHub Copilot",
     "zai": "Z.AI / GLM",
     "kimi-coding": "Kimi / Moonshot",
@@ -1207,6 +1208,9 @@ _PROVIDER_MODELS = {
     ],
     # xAI — prefix used in OpenRouter model IDs (x-ai/grok-4-20)
     "x-ai": [
+        {"id": "grok-4.20", "label": "Grok 4.20"},
+    ],
+    "xai-oauth": [
         {"id": "grok-4.20", "label": "Grok 4.20"},
     ],
 }

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **PR #2568** by @Michaelyklam (closes #2545) — Add the Hermes Agent `xai-oauth` provider to the WebUI's OAuth/provider catalogs so Grok OAuth accounts authenticated through the Hermes CLI appear in Settings → Providers and the model picker. The provider is treated as CLI-managed OAuth (not WebUI API-key configurable) and uses the live Hermes CLI model catalog when available with a Grok static fallback.
+
 ## [v0.51.91] — 2026-05-18 — Release BO (stage-384 — 5-PR full sweep batch — reasoning-replay history fix + archive-extract per-session inbox + fallback streaming warnings + sanitized custom-provider env hints + Slice 3c queue/goal adapter routing)
 
 ### Fixed
