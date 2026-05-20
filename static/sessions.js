@@ -520,8 +520,9 @@ async function newSession(flash, options={}){
     updateQueueBadge(S.session.session_id);
     syncTopbar();renderMessages();
     const dirLoad=loadDir('.');
-    // Hidden workspace trees should not block new-chat/profile-switch flow.
-    // When the panel is visible, wait so the file list lands with the session.
+    // loadDir('.') is fire-and-forget while the workspace panel is closed:
+    // waiting would block new-chat/profile-switch flow for users who never open
+    // the file tree. When visible, wait so the file list lands with the session.
     if(options&&options.awaitWorkspaceLoad) await dirLoad;
     // don't call renderSessionList here - callers do it when needed
   })();

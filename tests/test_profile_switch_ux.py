@@ -135,7 +135,7 @@ class TestParallelizedFetches:
         assert "awaitWorkspaceLoad: workspaceVisible" in fn
         sessions_js = (REPO_ROOT / "static" / "sessions.js").read_text(encoding="utf-8")
         assert "if(options&&options.awaitWorkspaceLoad) await dirLoad" in sessions_js
-        assert "Hidden workspace trees should not block" in sessions_js
+        assert "loadDir('.') is fire-and-forget while the workspace panel is closed" in sessions_js
 
 
 class TestSpinnerCss:
@@ -167,18 +167,33 @@ class TestProfileSessionListFlip:
 
     def test_profile_refresh_captures_row_positions(self):
         assert "function _captureSessionListFlipPositions()" in self.JS
-        assert "getBoundingClientRect().top" in self.JS
-        assert "querySelectorAll('.session-item[data-sid]')" in self.JS
+        start = self.JS.index("function _captureSessionListFlipPositions()")
+        end = self.JS.index("function _sessionListPrefersReducedMotion()", start)
+        fn = self.JS[start:end]
+        assert "querySelectorAll('.session-item[data-sid]')" in fn
+        assert "positions.set(row.dataset.sid,row.getBoundingClientRect().top);" in fn
 
     def test_profile_refresh_reflows_existing_rows(self):
         assert "function _playSessionListFlipAnimation(before)" in self.JS
-        assert "--session-reflow-offset" in self.JS
-        assert "session-reflowing" in self.JS
+        start = self.JS.index("function _playSessionListFlipAnimation(before)")
+        end = self.JS.index("function _isOptimisticFirstTurnSessionRow(s)", start)
+        fn = self.JS[start:end]
+        assert "const delta=oldTop-row.getBoundingClientRect().top;" in fn
+        assert "row.style.setProperty('--session-reflow-offset',delta+'px');" in fn
+        assert "row.classList.add('session-reflowing');" in fn
 
     def test_profile_refresh_flips_new_rows(self):
         assert "session-list-flip-enter" in self.JS
         assert "@keyframes sessionListFlipIn" in self.CSS
         assert "rotateX" in self.CSS
+
+    def test_profile_refresh_captures_before_render_and_plays_after_rows_exist(self):
+        capture = self.JS.index("const flipBefore=animateRefresh?_captureSessionListFlipPositions():null;")
+        clear = self.JS.index("list.innerHTML='';", capture)
+        row_render = self.JS.index("body.appendChild(_renderOneSession", clear)
+        play = self.JS.index("_playSessionListFlipAnimation(flipBefore);", row_render)
+
+        assert capture < clear < row_render < play
 
     def test_first_non_empty_session_render_is_animated(self):
         assert "_sessionListFirstRenderAnimated" in self.JS

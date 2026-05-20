@@ -4502,6 +4502,9 @@ function _profileSwitchPanelLoad(){
 
 function _refreshProfileSwitchBackground(gen){
   window._modelDropdownReady=null;
+  if (typeof window._ensureModelDropdownReady === 'function') {
+    Promise.resolve(window._ensureModelDropdownReady()).catch(()=>{});
+  }
   Promise.resolve(loadWorkspaceList()).then(()=>{
     if (gen !== _profileSwitchGeneration) return;
     if (S.session && typeof syncTopbar === 'function') syncTopbar();
