@@ -198,7 +198,8 @@ class TestProfileSessionListFlip:
     def test_first_non_empty_session_render_is_animated(self):
         assert "_sessionListFirstRenderAnimated" in self.JS
         assert "animateNextSessionListRefresh({enterAll:true});" in self.JS
-        assert "if(S&&S._bootReady) _sessionListFirstRenderAnimated=true;" in self.JS
+        assert "_sessionListFirstRenderAnimated=true;" in self.JS
+        assert "if(S&&S._bootReady) _sessionListFirstRenderAnimated=true;" not in self.JS
         assert "enterAllAnimatedRows" in self.JS
 
     def test_profile_refresh_is_not_whole_list_fade(self):

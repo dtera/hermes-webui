@@ -2059,7 +2059,7 @@ function _applySessionListPayload(sessData, projData){
   ensureActiveSessionExternalRefreshPoll();
   if(!_sessionListFirstRenderAnimated&&Array.isArray(_allSessions)&&_allSessions.length){
     animateNextSessionListRefresh({enterAll:true});
-    if(S&&S._bootReady) _sessionListFirstRenderAnimated=true;
+    _sessionListFirstRenderAnimated=true;
   }
   renderSessionListFromCache();  // no-ops if rename is in progress
 }
