@@ -5,7 +5,7 @@
 
 ### Fixed
 
-- **PR TBD** — fix(updates): pass `--force` to `git fetch --tags` in `api/updates.py` so the WebUI's release-tracking update check can recover from a remote re-tag (e.g. a release tag that was force-pushed to a new commit after a squash-merge). Without `--force`, plain `git fetch origin --tags` returns `! [rejected] vX.Y.Z (would clobber existing tag)` and the entire update path (check, force-apply, normal-apply) jams indefinitely — neither the periodic check nor manual "Check now" nor the Update button can recover. Three fetch call sites were patched (`_check_repo`, `apply_force_update`, `apply_update`) to use `--tags --force`; the WebUI never pushes tags, so deferring to the remote's view is the right contract. Closes #2756.
+- **PR #2758** — fix(updates): pass `--force` to `git fetch --tags` in `api/updates.py` so the WebUI's release-tracking update check can recover from a remote re-tag (e.g. a release tag that was force-pushed to a new commit after a squash-merge). Without `--force`, plain `git fetch origin --tags` returns `! [rejected] vX.Y.Z (would clobber existing tag)` and the entire update path (check, force-apply, normal-apply) jams indefinitely — neither the periodic check nor manual "Check now" nor the Update button can recover. Three fetch call sites were patched (`_check_repo`, `apply_force_update`, `apply_update`) to use `--tags --force`; the WebUI never pushes tags, so deferring to the remote's view is the right contract. Closes #2756.
 
 ## [v0.51.113] — 2026-05-22 — Release CK (stage-406 — 1-PR — composer model picker lag fix + hard-refresh recovery)
 
