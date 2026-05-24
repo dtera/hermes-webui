@@ -36,7 +36,7 @@ from api.config import (
     load_settings,
 )
 from api.helpers import redact_session_data, _redact_text
-from api.compression_anchor import visible_messages_for_anchor
+from api.compression_anchor import is_context_compression_marker, visible_messages_for_anchor
 from api.metering import meter
 from api.run_journal import RunJournalWriter
 from api.turn_journal import append_turn_journal_event_for_stream
@@ -2412,15 +2412,7 @@ def _dedupe_replayed_active_context(previous_context, result_messages):
 
 
 def _is_context_compression_marker(msg):
-    if not isinstance(msg, dict):
-        return False
-    text = _message_text(msg.get('content', '')).lower()
-    return (
-        'context compaction' in text
-        or 'context compression' in text
-        or 'context was auto-compressed' in text
-        or 'active task list was preserved across context compression' in text
-    )
+    return is_context_compression_marker(msg)
 
 
 def _compact_summary_text(raw_text: str | None, limit: int = 320) -> str | None:
@@ -5211,6 +5203,12 @@ def _run_agent_streaming(
                         model=model,
                         title=s.title,
                         message_count=len(s.messages),
+                        # #2762: pass the session's profile explicitly so the
+                        # background-thread state.db lookup doesn't fall
+                        # through to the process-global active profile and
+                        # write to the wrong DB (TLS profile is set on the
+                        # HTTP thread but not propagated to this worker).
+                        profile=getattr(s, 'profile', None),
                     )
             except Exception:
                 logger.debug("Failed to sync session to insights")
