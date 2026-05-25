@@ -9,6 +9,7 @@
 - Update Now no longer reports success or enters the restart wait flow when no WebUI or Agent update target is selected.
 - Cached WebUI agents no longer overwrite `prefill_messages` with an empty list when a later request does not include explicit prefill context.
 - Joplin notes drawer API calls now send the Web Clipper token in an `Authorization` header instead of placing it in the request URL query string.
+- Third-party notes drawer copy now uses localized strings in the supported non-English locale bundles instead of reusing the English defaults.
 
 ## [v0.51.132] — 2026-05-24 — Release DD (stage-batch14 — 4-PR replayed-context + interrupted-response + shutdown affordance + passkey opt-in)
 
