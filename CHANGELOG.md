@@ -3,6 +3,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Duplicate chat uploads now report the actual stored filename in `/api/upload` responses, so suffixed files such as `photo-1.png` do not appear under the original basename in WebUI attachment metadata.
+
 ## [v0.51.152] — 2026-05-28 — Release DX (stage-batch34 — single-PR optional gateway-backed browser chat)
 
 ### Added
