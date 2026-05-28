@@ -41,23 +41,29 @@ def test_notes_sources_redacts_tool_descriptions_and_omits_plain_file_tools():
     assert "[REDACTED]" in source["tools"][0]["description"]
 
 
-def test_notes_sources_shows_configured_note_servers_without_tool_inventory():
+def test_notes_sources_shows_configured_third_party_note_servers_without_tool_inventory():
     from api.routes import _notes_sources_from_mcp_inventory
 
     servers = {
         "joplin": {"name": "joplin", "enabled": True, "active": False, "status": "configured"},
+        "obsidian": {"name": "obsidian", "enabled": True, "active": False, "status": "configured"},
+        "notion": {"name": "notion", "enabled": True, "active": False, "status": "configured"},
+        "llm-wiki": {"name": "llm-wiki", "enabled": True, "active": False, "status": "configured"},
         "filesystem": {"name": "filesystem", "enabled": True, "active": True, "status": "healthy"},
     }
 
     sources = _notes_sources_from_mcp_inventory(servers, [])
 
-    assert [source["name"] for source in sources] == ["joplin"]
-    assert sources[0]["label"] == "Joplin"
-    assert sources[0]["tool_count"] == 3
-    assert [tool["name"] for tool in sources[0]["tools"]] == ["search_notes", "list_notes", "get_note"]
-    assert all(tool.get("inferred") is True for tool in sources[0]["tools"])
-    assert sources[0]["tool_source"] == "configured_hint"
-    assert sources[0]["status"] == "configured"
+    assert [source["name"] for source in sources] == ["joplin", "llm-wiki", "notion", "obsidian"]
+    by_name = {source["name"]: source for source in sources}
+    assert by_name["joplin"]["label"] == "Joplin"
+    assert [tool["name"] for tool in by_name["joplin"]["tools"]] == ["search_notes", "list_notes", "get_note"]
+    assert [tool["name"] for tool in by_name["obsidian"]["tools"]] == ["search_notes", "read_note"]
+    assert [tool["name"] for tool in by_name["notion"]["tools"]] == ["search_pages", "get_page"]
+    assert [tool["name"] for tool in by_name["llm-wiki"]["tools"]] == ["query_knowledge_base", "read_page"]
+    assert all(source["tool_source"] == "configured_hint" for source in sources)
+    assert all(tool.get("inferred") is True for source in sources for tool in source["tools"])
+    assert all(source["status"] == "configured" for source in sources)
 
 
 def test_external_notes_sources_drawer_is_default_off(monkeypatch):
