@@ -7,6 +7,12 @@
 
 - **New RFC: Stable Assistant Turn Anchors for Live-to-Final rendering.** Defines a frontend presentation/reconciliation model for anchoring one assistant turn across live streaming, settlement, replay/reload/recovery, Compact Worklog, Transparent Stream, terminal states, artifacts, and side effects. (#3926)
 
+## [v0.51.355] — 2026-06-10 — Release LS (conversation outline panel)
+
+### Added
+
+- **Opt-in conversation outline panel for long chats.** A new desktop-only, off-by-default floating panel (enable it under Settings → Preferences → "Show conversation outline") lists the questions you've asked in the current conversation as a numbered jump-list — click an entry to scroll straight to that point and flash it. It offsets itself when the workspace panel is open so the two never overlap, and it's strictly a chat-view affordance: switching to Settings / Tasks / Insights / any other panel hides the toggle and closes the panel, and it never appears at all while the setting is off. (#3573, #2124)
+
 ## [v0.51.354] — 2026-06-10 — Release LR (preserve explicit @provider:model picks across cold catalogs)
 
 ### Fixed
