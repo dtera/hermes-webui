@@ -3,6 +3,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Offline recovery now verifies unreliable browser offline reports with the existing `/health` probe before showing or sticking on the browser-reason banner.** `navigator.onLine` is treated as a hint for the banner reason, while server reachability remains the source of truth, so browsers that incorrectly report offline can recover without a page reload or permanent connection-lost state. (#4170)
+
 ## [v0.51.410] — 2026-06-14 — Release NW (chat Mermaid lightbox + workspace CSV table preview, #4075/#4025)
 
 ### Added

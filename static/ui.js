@@ -85,16 +85,27 @@ async function _probeOfflineRecovery(){
   try{return await _offlineHealthProbePromise;}
   finally{_offlineHealthProbePromise=null;}
 }
+async function _showOfflineBannerIfProbeFails(reason){
+  const visibleAtStart=_offlineVisible;
+  if(visibleAtStart)_setOfflineChecking(true);
+  const ok=await _probeOfflineRecovery();
+  if(visibleAtStart)_setOfflineChecking(false);
+  if(ok){
+    if(_offlineVisible){_stopOfflineProbeTimer();await _recoverFromOfflineSoftly();}
+    return true;
+  }
+  showOfflineBanner(reason||(_browserReportsOnline()?'network':'browser'));
+  return false;
+}
 async function checkOfflineRecoveryNow(){
   if(_offlineProbePromise)return _offlineProbePromise;
   _offlineProbePromise=(async()=>{
     if(!_offlineVisible)return false;
-    if(!_browserReportsOnline()){showOfflineBanner('browser');return false;}
     _setOfflineChecking(true);
     const ok=await _probeOfflineRecovery();
     _setOfflineChecking(false);
-    if(ok){_stopOfflineProbeTimer();await _recoverFromOfflineSoftly();return true;}
-    showOfflineBanner('network');
+    if(ok){if(!_offlineVisible)return true;_stopOfflineProbeTimer();await _recoverFromOfflineSoftly();return true;}
+    showOfflineBanner(_browserReportsOnline()?'network':'browser');
     return false;
   })();
   try{return await _offlineProbePromise;}
@@ -153,17 +164,18 @@ function _patchOfflineFetch(){
   window.fetch=async function(...args){
     try{return await _offlineRawFetch(...args);}
     catch(e){
-      if(!_browserReportsOnline())showOfflineBanner('browser');
-      else if(e instanceof TypeError&&!_isAbortError(e))void _probeOfflineRecovery().then(ok=>{if(!ok)showOfflineBanner('network');});
+      if(!_isAbortError(e)&&(e instanceof TypeError||!_browserReportsOnline())){
+        void _showOfflineBannerIfProbeFails(_browserReportsOnline()?'network':'browser');
+      }
       throw e;
     }
   };
 }
 function initOfflineMonitor(){
   _patchOfflineFetch();
-  window.addEventListener('offline',()=>showOfflineBanner('browser'));
+  window.addEventListener('offline',()=>{void _showOfflineBannerIfProbeFails('browser');});
   window.addEventListener('online',()=>{if(_offlineVisible)checkOfflineRecoveryNow();});
-  if(!_browserReportsOnline())showOfflineBanner('browser');
+  if(!_browserReportsOnline())void _showOfflineBannerIfProbeFails('browser');
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initOfflineMonitor,{once:true});
 else initOfflineMonitor();
