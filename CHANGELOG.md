@@ -3,6 +3,12 @@
 
 ## [Unreleased]
 
+## [v0.51.457] — 2026-06-16 — Release PR (gateway watcher can't brick startup)
+
+### Fixed
+
+- **Gateway watcher startup is now non-blocking (#4297).** `start_watcher()` ran synchronously in `main()` during boot, so if `_resolve_watcher_target()` stalled (a locked `state.db`, slow profile/home resolution, or an I/O block) the WebUI would never bind its port — a startup brick. It now starts on a daemon thread with a 5-second join, so the server proceeds to bind even when watcher initialization is slow; the watcher's own poll loop already ran on a separate daemon thread, so real-time SSE liveness is unchanged. Thanks @minidarkmimi.
+
 ### Internal
 
 - **Windows pytest-harness compatibility (#3664).** Hardened the test suite to run on Windows: profile-home fallback paths are path-normalized, strict POSIX file-mode (`0o600`) assertions are gated behind `os.name != "nt"` (Linux still asserts them at full strictness), the conftest cleanup handles Windows process-tree/port teardown and the Py3.12+ `shutil.rmtree` `onexc` shim, and tests that require `fork`/`fcntl` carry `@requires_fork` / `@requires_fcntl` markers (which never skip on Linux). Test-only — no runtime or app behavior change, no Linux CI behavior change. (#4254, #4255, #4256, #4257, #4259, #4263, #4266, #4274)
