@@ -3,6 +3,12 @@
 
 ## [Unreleased]
 
+## [v0.51.493] — 2026-06-18 — Release RC (ignore malformed background-process wakeup events)
+
+### Fixed
+
+- **Malformed background-process wakeup events no longer appear as empty `unknown completed` prompts.** WebUI now ignores empty or unknown completion-queue payloads and renders watch-pattern overflow summaries as explicit watch notifications instead of fake process completions. Thanks @ai-ag2026.
+
 ## [v0.51.492] — 2026-06-18 — Release RB (large context window preserved on session reload)
 
 ### Fixed
