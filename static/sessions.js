@@ -3518,6 +3518,7 @@ function showSessionListSkeleton(){
   const wrap = document.createElement('div');
   wrap.className = 'skeleton-list';
   wrap.setAttribute('aria-hidden', 'true');
+  let rowIndex = 0;
   for(const group of _SESSION_SKELETON_GROUPS){
     const label = document.createElement('div');
     label.className = 'skeleton-group-label';
@@ -3525,6 +3526,11 @@ function showSessionListSkeleton(){
     for(const spec of group.rows){
       const row = document.createElement('div');
       row.className = 'skeleton-row';
+      // Stagger the fade-in per row. Set inline (not via CSS :nth-child) because
+      // group-label siblings are interleaved with rows, so a :nth-child stagger
+      // would skip most rows. Cap so the longest list doesn't feel laggy.
+      row.style.animationDelay = Math.min(rowIndex * 0.025, 0.2) + 's';
+      rowIndex++;
       const title = document.createElement('div');
       title.className = 'skeleton-bar skeleton-title';
       title.style.width = spec.title + '%';
@@ -3552,10 +3558,6 @@ function showSessionListSkeleton(){
   delete list.dataset.sessionVirtualFilter;
   delete list.dataset.sessionVirtualActiveAnchor;
   _sessionListSkeletonActive = true;
-}
-
-function _clearSessionListSkeletonFlag(){
-  _sessionListSkeletonActive = false;
 }
 
 function _isOptimisticFirstTurnSessionRow(s){

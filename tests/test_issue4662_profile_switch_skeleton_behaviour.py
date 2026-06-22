@@ -137,6 +137,16 @@ const result = {
   rows: list.querySelectorAll('.skeleton-row').length,
   titles: list.querySelectorAll('.skeleton-title').length,
   stamps: list.querySelectorAll('.skeleton-stamp').length,
+  // Every row should carry an inline stagger delay (set in JS, not via a
+  // CSS :nth-child that would skip rows because group labels are interleaved).
+  rows_with_delay: list.querySelectorAll('.skeleton-row').filter(function(r){
+    return r.style && typeof r.style.animationDelay === 'string' && r.style.animationDelay.length > 0;
+  }).length,
+  last_row_delay: (function(){
+    var rs = list.querySelectorAll('.skeleton-row');
+    var last = rs[rs.length - 1];
+    return last && last.style ? last.style.animationDelay : null;
+  })(),
   skeleton_active_flag: _sessionListSkeletonActive,
   list_scrolltop: list.scrollTop,
 
@@ -178,6 +188,19 @@ def test_session_skeleton_rows_have_title_and_stamp(outcome):
     # Each row mirrors the real .session-item: title bar + timestamp bar.
     assert outcome["titles"] == 8, f"every row needs a title bar: {outcome}"
     assert outcome["stamps"] == 8, f"every row needs a timestamp bar: {outcome}"
+
+
+def test_session_skeleton_rows_have_inline_stagger_delay(outcome):
+    # Greptile: the stagger must be applied inline per row, not via a CSS
+    # :nth-child rule (group labels are interleaved with rows, so :nth-child
+    # would skip most rows). Every row carries an animationDelay, and the last
+    # row's delay is non-empty (capped at 0.2s).
+    assert outcome["rows_with_delay"] == 8, (
+        f"all 8 rows must carry an inline stagger delay: {outcome}"
+    )
+    assert outcome["last_row_delay"] not in (None, "", "0s"), (
+        f"the last row must have a real (non-zero) stagger delay, not be skipped: {outcome}"
+    )
 
 
 def test_session_skeleton_sets_active_flag_and_resets_scroll(outcome):

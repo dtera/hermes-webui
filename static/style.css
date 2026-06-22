@@ -1236,15 +1236,11 @@
     animation:skeletonSheen 1.25s ease-in-out infinite;background-size:200% 100%;}
   .skeleton-tree-row .skeleton-name{min-width:0;}
   .skeleton-tree-row .skeleton-size{height:8px;width:22px;flex:0 0 auto;margin-left:auto;opacity:.5;}
-  /* Gentle entrance so the skeleton itself doesn't pop in harshly */
+  /* Gentle entrance so the skeleton itself doesn't pop in harshly. The
+     per-row stagger delay is set inline in JS (showSessionListSkeleton),
+     because group-label siblings are interleaved with rows so a CSS
+     :nth-child stagger would skip most rows. */
   .skeleton-row,.skeleton-tree-row,.skeleton-group-label{animation:skeletonFadeIn .22s ease both;}
-  .skeleton-row:nth-child(2){animation-delay:.025s;}
-  .skeleton-row:nth-child(3){animation-delay:.05s;}
-  .skeleton-row:nth-child(4){animation-delay:.075s;}
-  .skeleton-row:nth-child(5){animation-delay:.1s;}
-  .skeleton-row:nth-child(6){animation-delay:.125s;}
-  .skeleton-row:nth-child(7){animation-delay:.15s;}
-  .skeleton-row:nth-child(8){animation-delay:.175s;}
   @keyframes skeletonSheen{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
   @keyframes skeletonFadeIn{from{opacity:0;}to{opacity:1;}}
   :root{--skeleton-base:color-mix(in srgb,var(--text) 8%,transparent);--skeleton-sheen:color-mix(in srgb,var(--text) 22%,transparent);}
