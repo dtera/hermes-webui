@@ -20246,6 +20246,7 @@ const LOCALES = {
     image_load_failed: 'Không thể tải ảnh',
     file_open_failed: 'Không thể mở file',
     downloading: (name) => `Đang tải ${name}\u2026`,
+    mic_insecure_origin: 'Nhập giọng nói cần kết nối bảo mật. Hãy mở Hermes qua HTTPS hoặc từ localhost để dùng microphone.',
     double_click_rename: 'Nhấp đúp để đổi tên',
     session_rename_failed_no_row: 'Không thể bắt đầu đổi tên — không tìm thấy hàng.',
     renamed_to: 'Đã đổi tên thành ',
@@ -20341,17 +20342,46 @@ const LOCALES = {
     settings_desc_session_endless_scroll: 'Khi bật, các tin nhắn cũ sẽ tự động tải khi bạn cuộn lên trên. Khi tắt, dùng nút tải tin nhắn cũ.',
     settings_label_auto_scroll_follow: 'Tự động cuộn theo nội dung mới',
     settings_desc_auto_scroll_follow: 'Khi bật, khung nhìn sẽ tự cuộn xuống cuối khi token mới được stream vào. Khi tắt, bạn sẽ tự điều khiển vị trí cuộn.',
+    settings_label_render_user_markdown: 'Render Markdown trong tin nhắn người dùng',
+    settings_label_show_titlebar_profile: 'Hiển thị bộ chuyển profile trên thanh tiêu đề',
+    settings_desc_show_titlebar_profile: 'Khi bật, nút chuyển profile sẽ xuất hiện ở góc trên bên trái thanh tiêu đề ứng dụng để bạn đổi profile từ bất kỳ tab nào. Mặc định tắt; chân khung soạn thảo luôn có bộ chuyển profile dù cài đặt này thế nào.',
+    settings_desc_render_user_markdown: 'Khi bật, chữ đậm, chữ nghiêng, liên kết và các Markdown khác trong tin nhắn của bạn sẽ được render. Mặc định tắt; khối code fenced và công thức toán luôn được render bất kể cài đặt này.',
     settings_label_worklog_details_expanded_default: 'Tự động mở chi tiết Worklog',
     settings_desc_worklog_details_expanded_default: 'Khi bật, chi tiết Worklog mới sẽ được mở sẵn để hiển thị tool, suy nghĩ và thẻ tiến trình mà không cần bấm thêm. Khi tắt, Worklog sẽ mặc định thu gọn; các lựa chọn mở/thu gọn thủ công theo từng lượt vẫn được ưu tiên.',
     settings_label_chat_activity_display_mode: 'Hiển thị hoạt động',
     settings_desc_chat_activity_display_mode: 'Compact Worklog gom nhóm hoạt động thành bản tóm tắt gọn. Transparent Stream giữ mỗi sự kiện thinking/tool thành một dòng theo thứ tự thời gian có thể mở rộng.',
     first_token_time: 'Thời gian tới token đầu tiên',
+    processed_elapsed: _i18nProcessedElapsedVi,
+    worklog_thinking: 'Đang suy nghĩ',
+    tool_target_skill_suffix: 'kỹ năng',
+    tool_action_label: _i18nToolActionLabelVi,
+    tool_worklog_summary: _i18nToolWorklogSummaryVi,
+    tool_summary_join: _i18nToolSummaryJoinVi,
     done: 'Hoàn tất',
     settings_option_compact_worklog: 'Nhật ký công việc rút gọn',
     settings_option_transparent_stream: 'Luồng trong suốt',
 
     settings_label_tab_visibility: 'Tab sidebar',
     settings_desc_tab_visibility: 'Chọn tab nào xuất hiện trong sidebar và thanh rail. Kéo các chip để đổi thứ tự. Chat và Settings luôn hiển thị.',
+    settings_label_composer_controls: 'Điều khiển chân khung chat',
+    settings_desc_composer_controls: 'Bật/tắt các điều khiển hiển thị ở chân khung chat. Không hỗ trợ đổi thứ tự.',
+    settings_label_composer_situational_controls: 'Điều khiển chân khung theo ngữ cảnh',
+    settings_desc_composer_situational_controls: 'Các điều khiển này không phải lúc nào cũng xuất hiện, tùy theo kích thước màn hình, chế độ hoặc trạng thái chạy. Bạn vẫn có thể tắt chúng nếu cần.',
+    composer_control_attach: 'Đính kèm',
+    composer_control_saved_prompts: 'Prompt đã lưu',
+    composer_control_mic: 'Mic',
+    composer_control_profile: 'Profile',
+    composer_control_workspace: 'Workspace',
+    composer_control_model: 'Model',
+    composer_control_reasoning: 'Lập luận',
+    composer_control_context: 'Ngữ cảnh',
+    composer_control_voice_mode: 'Chế độ giọng nói',
+    composer_control_toolsets: 'Toolset',
+    composer_control_status: 'Trạng thái',
+    composer_control_yolo: 'YOLO',
+    composer_control_quota_chip: 'Chip hạn mức',
+    composer_control_bg_badge: 'Huy hiệu nền',
+    composer_control_mobile_config: 'Cấu hình di động',
     open_in_browser: 'Mở trong trình duyệt',
     settings_dropdown_conversation: 'Cuộc trò chuyện',
     settings_dropdown_appearance: 'Giao diện',
@@ -20362,6 +20392,7 @@ const LOCALES = {
     settings_tab_appearance: 'Giao diện',
     settings_tab_preferences: 'Tùy chọn',
     settings_tab_plugins: 'Plugin',
+    settings_tab_extensions: 'Tiện ích mở rộng',
     settings_plugins_title: 'Plugin',
     plugins_enable_toggle: 'Bật',
     settings_plugins_meta: 'Xem các plugin Hermes đã cài đặt và lifecycle hook mà chúng đăng ký. Bảng này chỉ đọc.',
@@ -20581,6 +20612,7 @@ const LOCALES = {
     dashboard_loopback_warning: 'Dashboard chỉ cho phép loopback trên server. Hãy truy cập trực tiếp từ server hoặc khởi động lại với --host 0.0.0.0 (không an toàn).',
     tab_logs: 'Logs',
     tab_settings: 'Cài đặt',
+    close_menu: 'Đóng menu',
     new_conversation: 'Cuộc trò chuyện mới',
     filter_conversations: 'Lọc cuộc trò chuyện...',
     markdown_table_filter: 'Lọc bảng',
@@ -20991,6 +21023,7 @@ const LOCALES = {
     cron_job_updated: 'Đã cập nhật job',
     cron_model_label: 'Ghi đè model',
     cron_model_hint: 'Ghi đè model mặc định cho job này.',
+    cron_model_no_agent_hint: 'Job no-agent chạy trực tiếp script đã cấu hình; không dùng model.',
     cron_model_use_default: 'Mặc định (dùng profile/hệ thống mặc định)',
     cron_delete_confirm_title: 'Xóa cron job',
     cron_delete_confirm_message: 'Hành động này không thể hoàn tác.',
@@ -21108,6 +21141,18 @@ const LOCALES = {
     disable_auth_confirm_message: 'Bất kỳ ai cũng có thể truy cập instance này.',
     auth_disabled: 'Đã tắt xác thực — đã gỡ bảo vệ mật khẩu',
     disable_auth_failed: 'Tắt xác thực thất bại: ',
+    current_password_label: 'Mật khẩu hiện tại',
+    current_password_placeholder: 'Nhập mật khẩu hiện tại\u2026',
+    current_password_required: 'Cần mật khẩu hiện tại để thay đổi hoặc tắt xác thực.',
+    current_password_incorrect: 'Mật khẩu hiện tại không đúng.',
+    disable_auth_typed_confirm: 'Nhập DISABLE AUTH để xác nhận',
+    auth_status_password: 'Xác thực bằng mật khẩu',
+    auth_status_passkey_only: 'Chỉ dùng passkey',
+    auth_status_unauthenticated: 'Chưa xác thực',
+    auth_warning_badge: 'Xác thực đã tắt',
+    auth_disabled_warning_message: 'Instance này có thể truy cập mà không cần xác thực.',
+    auth_acknowledged_label: 'Tôi đã xem rủi ro này; hiển thị cảnh báo điều hướng ít khẩn cấp hơn.',
+    auth_ack_save_failed: 'Cập nhật xác nhận thất bại: ',
     bg_error_single: (title) => `"${title}" đã gặp lỗi`,
     bg_error_multi: (count) => `${count} phiên đã gặp lỗi`,
     // skill form
@@ -21189,6 +21234,9 @@ const LOCALES = {
     composer_mobile_context: 'Ngữ cảnh',
     context_block_name_default: 'Ngữ cảnh',
     context_block_flush_aria: 'Các khối ngữ cảnh sẽ được gửi kèm khi bạn nhấn gửi',
+    context_block_rename_hint: 'Bấm hoặc nhấn Enter để đổi tên',
+    context_block_rename_aria: 'Đổi tên khối ngữ cảnh',
+    context_block_remove: 'Xóa khối ngữ cảnh',
     csv_loading: 'Đang tải CSV',
     csv_too_large: 'Tệp CSV quá lớn để hiển thị trực tiếp',
     csv_no_data: 'Tệp CSV không đủ dữ liệu để hiển thị thành bảng',
@@ -21342,6 +21390,7 @@ const LOCALES = {
     settings_aux_advanced_extra_body_object_required: 'Extra body phải là một đối tượng JSON',
     settings_aux_advanced_save_failed: 'Lưu tùy chọn auxiliary thất bại',
     symlink_link_to: 'Liên kết mềm → {target}',
+    external_link_open_confirm: 'Symlink này trỏ ra ngoài workspace và không thể mở từ đây.',
     text_pasted: 'Đã đính kèm văn bản đã dán dưới dạng ',
     wiki_browse: 'Duyệt wiki',
     wiki_search_placeholder: 'Tìm trang…',
@@ -21486,6 +21535,47 @@ function _i18nToolSummaryJoinCjk(parts) {
   if (items.length === 2) return `${items[0]}和${items[1]}`;
   return `${items.slice(0, -1).join('、')}和${items[items.length - 1]}`;
 }
+
+const _I18N_TOOL_ACTION_TEXT_VI = {
+    shell: { running: 'Đang chạy', done: 'Đã chạy', fail: 'chạy', fallback: 'lệnh' },
+    read: { running: 'Đang đọc', done: 'Đã đọc', fail: 'đọc', fallback: 'tệp' },
+    list: { running: 'Đang liệt kê', done: 'Đã liệt kê', fail: 'liệt kê', fallback: 'tệp' },
+    search: { running: 'Đang tìm kiếm', done: 'Đã tìm kiếm', fail: 'tìm kiếm', fallback: 'workspace' },
+    web: { running: 'Đang kiểm tra', done: 'Đã kiểm tra', fail: 'kiểm tra', fallback: 'dữ liệu web' },
+    write: { running: 'Đang cập nhật', done: 'Đã cập nhật', fail: 'cập nhật', fallback: 'tệp' },
+    skill: { running: 'Đang tải', done: 'Đã tải', fail: 'tải', fallback: 'kỹ năng' },
+    memory: { running: 'Đang lưu', done: 'Đã lưu', fail: 'lưu', fallback: 'bộ nhớ' },
+    delegate: { running: 'Đang ủy quyền', done: 'Đã ủy quyền', fail: 'ủy quyền', fallback: 'tác vụ' },
+    unknown: { running: 'Đang chạy', done: 'Đã chạy', fail: 'chạy', fallback: 'công cụ' },
+};
+const _I18N_TOOL_SUMMARY_TEXT_VI = {
+    shell: { running: ['Đang chạy lệnh', 'Đang chạy {n} lệnh'], done: ['Đã chạy lệnh', 'Đã chạy {n} lệnh'] },
+    read: { running: ['Đang đọc tệp', 'Đang đọc {n} tệp'], done: ['Đã đọc tệp', 'Đã đọc {n} tệp'] },
+    list: { running: ['Đang liệt kê tệp', 'Đang liệt kê {n} mục'], done: ['Đã liệt kê tệp', 'Đã liệt kê {n} tệp'] },
+    search: { running: ['Đang tìm kiếm workspace', 'Đang tìm kiếm workspace {n} lần'], done: ['Đã tìm kiếm workspace', 'Đã tìm kiếm workspace {n} lần'] },
+    web: { running: ['Đang kiểm tra web', 'Đang kiểm tra web {n} lần'], done: ['Đã kiểm tra web', 'Đã kiểm tra web {n} lần'] },
+    write: { running: ['Đang cập nhật tệp', 'Đang cập nhật {n} tệp'], done: ['Đã cập nhật tệp', 'Đã cập nhật {n} tệp'] },
+    skill: { running: ['Đang tải kỹ năng', 'Đang tải {n} kỹ năng'], done: ['Đã tải kỹ năng', 'Đã tải {n} kỹ năng'] },
+    memory: { running: ['Đang lưu bộ nhớ', 'Đang lưu {n} cập nhật bộ nhớ'], done: ['Đã lưu bộ nhớ', 'Đã lưu {n} cập nhật bộ nhớ'] },
+    delegate: { running: ['Đang ủy quyền tác vụ', 'Đang ủy quyền {n} tác vụ'], done: ['Đã ủy quyền tác vụ', 'Đã ủy quyền {n} tác vụ'] },
+    unknown: { running: ['Đang chạy công cụ', 'Đang chạy {n} công cụ'], done: ['Đã chạy công cụ', 'Đã chạy {n} công cụ'] },
+};
+function _i18nProcessedElapsedVi(duration) {
+  return _i18nProcessedElapsed('Đã xử lý', duration);
+}
+function _i18nToolActionLabelVi(kind, state, target, display, failed) {
+  const verbs = _I18N_TOOL_ACTION_TEXT_VI[kind] || _I18N_TOOL_ACTION_TEXT_VI.unknown;
+  const object = target || verbs.fallback || display || 'công cụ';
+  if (failed) return `Không thể ${verbs.fail || 'chạy'} ${object}`;
+  return `${verbs[state] || verbs.running} ${object}`;
+}
+function _i18nToolWorklogSummaryVi(kind, state, count) {
+  return _i18nToolWorklogSummaryFromMap(_I18N_TOOL_SUMMARY_TEXT_VI, kind, state, count);
+}
+function _i18nToolSummaryJoinVi(parts) {
+  return Array.isArray(parts) ? parts.filter(Boolean).join(', ') : '';
+}
+
 
 
 // Active locale — defaults to English; overridden by loadLocale() at boot.
