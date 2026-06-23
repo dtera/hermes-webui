@@ -489,7 +489,7 @@ function _purgeStaleInflightEntries() {
   }
 }
 
-function _rememberSessionListSource(s, sid = null) {
+function _rememberSessionListSource(s, sid = null, allowScopeFallback = true) {
   const resolvedSid = sid || (s && s.session_id);
   if (!resolvedSid) return;
   let source = null;
@@ -503,6 +503,7 @@ function _rememberSessionListSource(s, sid = null) {
     }
   }
   if (!source
+    && allowScopeFallback
     && typeof _allSessionsScope !== 'undefined'
     && _allSessionsScope
     && typeof _allSessionsScope.sidebarSource === 'string') {
@@ -1641,7 +1642,7 @@ function _sessionListQueryString() {
   qs.set('sidebar_source', _requestedSessionSidebarSource());
   if(_showAllProfiles) qs.set('all_profiles','1');
   if(_showArchived) qs.set('include_archived','1');
-  return qs.toString() ? `?${qs.toString()}` : '';
+  return `?${qs.toString()}`;
 }
 
 function _sessionSourceTabCount(filter, renderedWebuiSessionCount, renderedCliSessionCount) {
@@ -3717,7 +3718,7 @@ function _shouldKeepLocalOnlyOptimisticSessionRow(local){
 
 function _dropStaleOptimisticSessionRow(sid){
   if(!sid) return;
-  if(typeof _rememberSessionListSource==='function') _rememberSessionListSource(null, sid);
+  if(typeof _rememberSessionListSource==='function') _rememberSessionListSource(null, sid, false);
   if(INFLIGHT&&INFLIGHT[sid]){
     delete INFLIGHT[sid];
     if(typeof clearInflightState==='function') clearInflightState(sid);
@@ -5375,7 +5376,7 @@ function _ensureActiveSessionRowPresent(rows, sourceRows){
 function clearOptimisticSessionStreaming(sid){
   sid=sid||(S.session&&S.session.session_id)||'';
   if(!sid) return;
-  if(typeof _rememberSessionListSource==='function') _rememberSessionListSource(null, sid);
+  if(typeof _rememberSessionListSource==='function') _rememberSessionListSource(null, sid, false);
   if(S.session&&S.session.session_id===sid){
     S.session.active_stream_id=null;
     S.activeStreamId=null;

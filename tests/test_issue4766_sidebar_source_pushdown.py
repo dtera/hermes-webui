@@ -461,6 +461,29 @@ console.log(JSON.stringify({{
     assert "cli-stale" not in body["sourceKeys"]
 
 
+@pytest.mark.skipif(NODE is None, reason="node not on PATH")
+def test_sid_only_source_remembering_skips_scope_fallback():
+    src = SESSIONS_JS.read_text(encoding="utf-8")
+    is_cli_fn = _extract_function(src, "_isCliSession")
+    remember_source_fn = _extract_function(src, "_rememberSessionListSource")
+    script = f"""
+global._allSessions = [];
+global._allSessionsScope = {{ sidebarSource: 'cli' }};
+global._sessionListSourceById = new Map();
+{is_cli_fn}
+{remember_source_fn}
+_rememberSessionListSource(null, 'detached-sid', false);
+console.log(JSON.stringify({{
+  hasDetached: _sessionListSourceById.has('detached-sid'),
+  remembered: Array.from(_sessionListSourceById.entries()),
+}}));
+"""
+    body = _run_node(script)
+
+    assert body["hasDetached"] is False
+    assert body["remembered"] == []
+
+
 def test_session_list_response_omits_bucket_counts_when_missing(monkeypatch):
     monkeypatch.setattr(routes, "_session_list_cache_overlay_runtime_rows", lambda rows: rows)
     monkeypatch.setattr(routes, "_sidebar_session_response_item", lambda row: row)
