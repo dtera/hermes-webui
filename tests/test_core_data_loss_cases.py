@@ -193,6 +193,44 @@ def test_advanced_sidecar_at_watermark_keeps_state_only_post_edit_reply():
     )
 
 
+def test_advanced_does_not_resurrect_stale_post_watermark_row_before_checkpoint():
+    """The boundary<watermark advanced signal must NOT resurrect a deleted
+    suffix row with ts > watermark that appears in state.db BEFORE the edited
+    checkpoint row.
+
+    Codex final-gate found that making `sidecar_advanced_past_watermark`
+    globally true (whenever boundary < watermark) let a stale ts>watermark row
+    bypass the skip before state replay reached the sidecar's edited checkpoint,
+    resurrecting deleted turns. The bypass is now gated on the checkpoint having
+    been consumed (state_replay_idx >= len(sidecar_visible_sequence))."""
+    # sidecar ends at the edited user @200 (== watermark); state.db lists a
+    # deleted future suffix (@300/@301) BEFORE the appended edited turn.
+    sidecar = [
+        _msg("user", "first", 50.0),
+        _msg("assistant", "first reply", 51.0),
+        _msg("user", "edited prompt", 200.0),
+    ]
+    state = [
+        _msg("user", "first", 50.0),
+        _msg("assistant", "first reply", 51.0),
+        _msg("user", "deleted future prompt", 300.0),
+        _msg("assistant", "deleted future answer", 301.0),
+        _msg("user", "edited prompt", 200.0),
+    ]
+
+    merged = models.merge_session_messages_append_only(
+        sidecar, state, truncation_watermark=200.0, truncation_boundary=51.0
+    )
+
+    contents = [m["content"] for m in merged]
+    assert "deleted future prompt" not in contents, (
+        f"Stale post-watermark row resurrected before checkpoint! {contents}"
+    )
+    assert "deleted future answer" not in contents, (
+        f"Stale post-watermark row resurrected before checkpoint! {contents}"
+    )
+
+
 # ─── Same-second assistant reply dropped ──────────────────────────────────────
 
 

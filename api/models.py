@@ -5293,12 +5293,22 @@ def merge_session_messages_append_only(
         # post-edit content and must merge through (not be dropped as a replaced
         # tail). The conservative skip still applies for boundary is None and
         # boundary == watermark (not-advanced / legacy).
+        #
+        # CRITICAL: the boundary-advanced signal may only bypass the skip AFTER
+        # state replay has consumed the sidecar's visible checkpoint
+        # (state_replay_idx >= len(sidecar_visible_sequence)). A deleted suffix
+        # row with ts > watermark that appears in state.db BEFORE the edited
+        # checkpoint must still be skipped — otherwise the advanced signal would
+        # resurrect it. The sidecar-max-timestamp signal needs no such gate (a
+        # sidecar tail beyond the watermark is itself proof the checkpoint has
+        # advanced).
+        checkpoint_consumed = state_replay_idx >= len(sidecar_visible_sequence)
         sidecar_advanced_past_watermark = (
             watermark_timestamp is not None
             and (
                 (max_sidecar_timestamp is not None
                  and max_sidecar_timestamp > watermark_timestamp)
-                or watermark_advanced_by_boundary
+                or (watermark_advanced_by_boundary and checkpoint_consumed)
             )
         )
         if (
@@ -5408,9 +5418,15 @@ def merge_session_messages_append_only(
             # block would normally skip it ("sidecar already has this message"),
             # but the sidecar doesn't — it's a genuine state-only recovery row.
             # Let it through (CORE-B, #4767).
+            #
+            # Only AFTER the sidecar's visible checkpoint has been consumed
+            # (checkpoint_consumed) — a same-second row appearing in state.db
+            # BEFORE the edited user replay is a deleted/replaced row, not the
+            # post-edit reply, and must stay skipped.
             if (
                 watermark_timestamp is not None
                 and timestamp == watermark_timestamp
+                and checkpoint_consumed
                 and str(msg.get("role", "")).lower() != "user"
                 and _session_message_content_key(msg) not in seen_content_keys
             ):
