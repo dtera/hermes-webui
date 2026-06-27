@@ -8385,7 +8385,13 @@ async function loadExtensionsPanel(opts){
   const target=$('extensionsDiagnostics');
   const copyBtn=$('extensionsCopyDiagnosticsBtn');
   if(!target) return;
-  const preserveExisting=!!(opts&&opts.preserveExisting&&target.innerHTML.trim());
+  // Only preserve REAL rendered diagnostics across a refresh — never the
+  // "Loading…" / error placeholders, or a failed refresh would leave the panel
+  // stuck on "Loading extension diagnostics…" instead of rendering the error.
+  const preserveExisting=!!(
+    opts&&opts.preserveExisting&&target.innerHTML.trim()
+    &&!target.querySelector('.extensions-loading,.extensions-error')
+  );
   if(copyBtn&&!preserveExisting) copyBtn.disabled=true;
   const seq=++_extensionsSidecarMonitorSeq;
   if(!preserveExisting) target.innerHTML='<div class="extensions-loading">Loading extension diagnostics…</div>';

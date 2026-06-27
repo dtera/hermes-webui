@@ -157,7 +157,11 @@ def test_extensions_panel_renders_loopback_sidecar_monitor_safely():
     assert "_monitorExtensionSidecars(sidecars,seq)" in render_block
     assert "function _renderExtensionsPanel(data,seq)" in render_block
     assert "const seq=++_extensionsSidecarMonitorSeq" in load_block
-    assert "preserveExisting=!!(opts&&opts.preserveExisting&&target.innerHTML.trim())" in load_block
+    assert "opts&&opts.preserveExisting&&target.innerHTML.trim()" in load_block
+    # A failed refresh must NOT be preserved as "existing content": the Loading/
+    # error placeholders are excluded so a fetch error always renders the error
+    # instead of leaving the panel stuck on "Loading extension diagnostics…".
+    assert "!target.querySelector('.extensions-loading,.extensions-error')" in load_block
     assert "if(!preserveExisting) target.innerHTML" in load_block
     assert "loadExtensionsPanel({preserveExisting:true})" in load_block
     assert "if(seq!==_extensionsSidecarMonitorSeq) return;" in load_block
