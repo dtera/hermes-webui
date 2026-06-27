@@ -3,6 +3,12 @@
 
 ## [Unreleased]
 
+## [v0.51.691] — 2026-06-27 — Release YU (auth-persistence failures are surfaced, never silently brick or degrade)
+
+### Fixed
+
+- **A corrupt or unreadable auth session store / signing key no longer silently degrades — or bricks — WebUI.** Session-verification survival depends on `.sessions.json` and `.signing_key` under `STATE_DIR`; previously read/write failures were hidden behind debug-only logs, so after a restart/upgrade a user could land in a dead-session state with no actionable signal. These failures are now promoted to warnings (with the artifact path + `STATE_DIR` + consequence, never any key or token material). The session loader is fully fail-open: a missing, unreadable, malformed-UTF-8, malformed-JSON, deeply-nested (RecursionError), or wrong-shape sessions file now warns and starts with an empty session table instead of letting the exception escape and block startup. Thanks @rodboev. (#5023, fixes #5022)
+
 ## [v0.51.690] — 2026-06-27 — Release YT (a fresh blank boot binds the profile's default workspace)
 
 ### Fixed
