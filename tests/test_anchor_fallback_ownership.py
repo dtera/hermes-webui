@@ -57,7 +57,9 @@ def _skip_js_string_or_comment(src: str, idx: int) -> int:
         assert end != -1, "JavaScript block comment did not close"
         return end + 2
     quote = src[idx]
-    if quote not in {"'", '"', "`"}:
+    if quote == "`":
+        return _skip_js_template_literal(src, idx)
+    if quote not in {"'", '"'}:
         return idx
     idx += 1
     while idx < len(src):
@@ -68,6 +70,23 @@ def _skip_js_string_or_comment(src: str, idx: int) -> int:
             return idx + 1
         idx += 1
     raise AssertionError(f"JavaScript string literal {quote!r} did not close")
+
+
+def _skip_js_template_literal(src: str, idx: int) -> int:
+    assert src[idx] == "`", f"expected template literal at {idx}"
+    idx += 1
+    while idx < len(src):
+        if src[idx] == "\\":
+            idx += 2
+            continue
+        if src[idx] == "`":
+            return idx + 1
+        if src.startswith("${", idx):
+            expression_close = _matching_delimiter(src, idx + 1, "{", "}")
+            idx = expression_close + 1
+            continue
+        idx += 1
+    raise AssertionError("JavaScript template literal did not close")
 
 
 def _matching_delimiter(src: str, open_idx: int, opener: str, closer: str) -> int:
@@ -116,6 +135,21 @@ def test_phase0_doc_records_settled_fallback_ownership_matrix():
     assert "| Settled Transparent Stream activity |" in doc
     assert "| Historical / non-anchor transcripts |" in doc
     assert "This matrix is an audit baseline, not permission to delete fallbacks." in doc
+
+
+def test_function_extractor_handles_nested_template_literal_interpolation():
+    source = """
+    function sample(){
+      const text=`outer ${condition ? `inner ${value}` : { fallback: true }}`;
+      if(anchorOwnedAssistantRawIdxs.has(rawIdx)) return;
+    }
+    function afterSample(){ return false; }
+    """
+
+    body = _function_body(source, "sample")
+
+    assert "if(anchorOwnedAssistantRawIdxs.has(rawIdx)) return;" in body
+    assert "function afterSample" not in body
 
 
 def test_transparent_raw_content_helper_is_fallback_only_when_anchor_scene_absent():
