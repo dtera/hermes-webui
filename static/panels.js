@@ -7377,7 +7377,10 @@ function _preferencesPayloadFromUi(){
   const showUsageCb=$('settingsShowTokenUsage');
   if(showUsageCb) payload.show_token_usage=showUsageCb.checked;
   const showQuotaChipCb=$('settingsShowQuotaChip');
-  if(showQuotaChipCb) payload.show_quota_chip=showQuotaChipCb.checked;
+  if(showQuotaChipCb){
+    payload.show_quota_chip=showQuotaChipCb.checked;
+    payload.show_quota_chip_opt_out=!showQuotaChipCb.checked;
+  }
   const showConversationOutlineCb=$('settingsShowConversationOutline');
   if(showConversationOutlineCb) payload.show_conversation_outline=showConversationOutlineCb.checked;
   const hideSuggestionsCb=$('settingsHideSuggestions');
@@ -7812,11 +7815,10 @@ async function loadSettingsPanel(){
       maxTokensField.dataset.initialValue=maxTokensField.value;
       maxTokensField.addEventListener('input',_markSettingsDirty,{once:false});
     }
-    // Ambient provider quota chip toggle — default off; only shows at ≥1400px viewport
-    // when enabled (see style.css @media (max-width:1399.98px) rule).
+    // Ambient provider quota chip toggle — default on when provider quota data is available.
     const showQuotaChipCb=$('settingsShowQuotaChip');
     if(showQuotaChipCb){
-      showQuotaChipCb.checked=settings.show_quota_chip===true;
+      showQuotaChipCb.checked=settings.show_quota_chip!==false;
       window._showQuotaChip=showQuotaChipCb.checked;
       showQuotaChipCb.addEventListener('change',()=>{
         window._showQuotaChip=showQuotaChipCb.checked;
@@ -10557,6 +10559,7 @@ async function saveSettings(andClose){
     }
   }
   body.show_quota_chip=showQuotaChip===true;
+  body.show_quota_chip_opt_out=showQuotaChip!==true;
   body.show_conversation_outline=showConversationOutline===true;
   body.show_tps=showTps;
   body.fade_text_effect=fadeTextEffect;
